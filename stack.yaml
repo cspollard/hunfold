@@ -2,5 +2,8 @@ flags: {}
 extra-package-dbs: []
 packages:
 - '.'
+- '../llfit/'
 extra-deps:
+- list-transformer-1.0.1
+- llfit-0.1.0.0
 resolver: lts-7.13
