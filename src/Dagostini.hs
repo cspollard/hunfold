@@ -13,6 +13,10 @@ import           Matrix
 
 
 
+-- TODO
+-- this can be generalized:
+--   eg. smearing matrix is really just a function from cause to effect
+--   maybe this becomes just (b -> a) -> b -> a?
 postLLH :: (Integral b, Floating a, Arity neffect, Arity ncause)
   => Vec neffect b
   -> Vec neffect a
@@ -39,12 +43,12 @@ postLLH dat bkgs smear lumi logPrior sigmas =
 type NE = ToPeano 3
 type NC = ToPeano 2
 
--- TODO
--- odd numbers are broken for some reason
 test :: Int -> IO ()
 test n = LT.runListT $ LT.liftIO . print =<< c
 
   where
+    -- TODO
+    -- marginalize over bkgs, smears, lumi using Prob monad?
     f :: Floating a => Vec NC a -> a
     f = iterate (postLLH myData myBkgs mySmears 1.0) myLogPrior !! n
     c =
