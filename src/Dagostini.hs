@@ -129,14 +129,17 @@ myMeas = (/) <$> multMV smear dat <*> myEfficiency
 -- xi = (sum_j P(Ci|Ej) yj) / (sum_j P(Ej|Ci))
 --   where sum_j P(Ej|Ci) is the observation efficiency of cause bin i
 
--- we observe a spectrum yj (integers) in n effect bins.
--- we hope to measure differential cross sections sigma_i in m cause bins.
+-- we observe a spectrum xj (integers) in n effect bins.
+-- we hope to measure differential cross sections si in m cause bins.
 -- we have m*(n+1) P(Ej|Ci) terms corresponding to the smearing matrix.
 --   (n+1 takes into account the inefficiency)
 -- we need to marginalize over uncertainties in our backgrounds.
 -- we need to marginalize over uncertainties in our signal model, P(Ej|Ci).
 -- we need to deal with the prior distribution P(Ci) (iterative?)
--- given a particular P(Ej|Ci), a background prediction bj and the obvervations yj,
---   we can obtain P(mui|yj) = P(yj|mui) P(mui) / P(yj)
+-- given a particular P(Ej|Ci), a background prediction bj and the obvervations xj,
+--   we can obtain P(xj|si)
+
+-- we want P(si|xj) = P(xj|si) P(si) / P(xj)
+--   - where P(xj) = bj + sum_i P(Ej|Ci) P(si)
 
 -}
