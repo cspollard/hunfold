@@ -6,34 +6,19 @@
 
 module Dagostini where
 
-import qualified Data.Vector.Fixed.Cont as V
+import           Control.Monad.Trans.Class     (lift)
+import qualified Data.Vector.Fixed.Cont        as V
 import           Likelihood
-import qualified List.Transformer       as LT
+import qualified List.Transformer              as LT
 import           Matrix
+import           System.Random.MWC.Probability
 
 
+logPostLH :: Num a => (b -> a) -> (b -> a) -> b -> a
+logPostLH logCondProb logPrior sigmas = logCondProb sigmas + logPrior sigmas
 
--- TODO
--- this can be generalized:
---   eg. smearing matrix is really just a function from cause to effect
---   maybe this becomes just (b -> a) -> b -> a?
-postLLH :: (Integral b, Floating a, Arity neffect, Arity ncause)
-  => Vec neffect b
-  -> Vec neffect a
-  -> Mat ncause (S neffect) a
-  -> a
-  -> (Vec ncause a -> a)
-  -> Vec ncause a -> a
-postLLH dat bkgs smear lumi logPrior sigmas =
-  conditionalLogProb + logPrior sigmas
-  where
-    -- NB: the first row of the migration matrix should be the inefficiency of
-    --     each cause bin.
-    -- xs: the prediction based on the given cross sections
-    xs = fmap (*lumi) $ (+) <$> tailV (multMV smear sigmas) <*> bkgs
-
-    -- the log conditional probability of the data bins given the sigmas
-    conditionalLogProb = sum $ logPoissonP <$> dat <*> xs
+logPostLHNIter :: Num a => Int -> (b -> a) -> (b -> a) -> b -> a
+logPostLHNIter n logCondProb = head . drop n . iterate (logPostLH logCondProb)
 
 
 -- test case:
@@ -43,24 +28,55 @@ postLLH dat bkgs smear lumi logPrior sigmas =
 type NE = ToPeano 3
 type NC = ToPeano 2
 
-test :: Int -> IO ()
-test n = LT.runListT $ LT.liftIO . print =<< c
+test :: Int -> Int -> Int -> IO ()
+test niters nintsamps nextsamps = do
+    writeFile "test.dat" "bin1, bin2\n"
+    _ <- withSystemRandom . samples nextsamps
+        $ LT.runListT . LT.take nintsamps $
+        do
+          [x1, x2] <- V.toList <$> chain
+          LT.liftIO . appendFile "test.dat"
+            $ show x1 ++ ", " ++ show x2 ++ "\n"
+
+    return ()
+
+
 
   where
-    -- TODO
-    -- marginalize over bkgs, smears, lumi using Prob monad?
-    f :: Floating a => Vec NC a -> a
-    f = iterate (postLLH myData myBkgs mySmears 1.0) myLogPrior !! n
-    c =
-      LT.take 100
-        $ runLLH (metropolis 1.0) f (V.fromList' [1, 1])
-          =<< LT.liftIO createSystemRandom
+    -- NB: the first row of the migration matrix should be the inefficiency of
+    --     each cause bin.
+    logProb dat bkgs smear lumi sigmas =
+      -- xs: the prediction based on the given cross sections
+      let xs = fmap (*lumi) $ (+) <$> tailV (multMV smear sigmas) <*> bkgs
+      in sum $ logPoissonP <$> dat <*> xs
+
+    -- the "bank" of (logs of) posterior distributions iterated n times
+    logPosts :: Prob IO (Vec NC Double -> Double)
+    logPosts = do
+      logCondProb <- logCondProbs
+      return $ iterate logCondProb myLogPrior !! niters
+
+    -- the "bank" of (logs of) conditional probabilities functions to marginalize over "the world"
+    logCondProbs :: Prob IO ((Vec NC Double -> Double) -> Vec NC Double -> Double)
+    logCondProbs = do
+      lumi <- cutOffNormal 1 0.2
+      return $ logPostLH (logProb myData myBkgs mySmears lumi)
+
+    cutOffNormal mu s = do
+      x <- normal mu s
+      if x < 0 then cutOffNormal mu s else return x
+
+    chain :: ListT (Prob IO) (Vec NC Double)
+    chain = fmap fst $ do
+      logPost <- lift logPosts
+      g <- LT.liftIO createSystemRandom
+      runLLH (metropolis 0.1) logPost myStart g
 
 myData :: Vec NE Int
-myData = V.fromList' [1, 2, 1]
+myData = V.fromList' [1, 0, 1]
 
 myBkgs :: Fractional a => Vec NE a
-myBkgs = V.fromList' [0.0, 0.0, 0.0]
+myBkgs = V.fromList' [0.5, 0.0, 0.5]
 
 mySmears :: Fractional a => Mat NC (S NE) a
 mySmears = V.fromList'
@@ -72,6 +88,9 @@ mySmears = V.fromList'
 
 myLogPrior :: Num a => Vec NC a -> a
 myLogPrior = const 0
+
+myStart :: Num a => ContVec NC a
+myStart = V.fromList' [1, 1]
 
 {-
 
