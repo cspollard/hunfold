@@ -62,15 +62,18 @@ test niters nintsamps nextsamps = do
       lumi <- cutOffNormal 1 0.2
       return $ logPostLH (logProb myData myBkgs mySmears lumi)
 
-    cutOffNormal mu s = do
-      x <- normal mu s
-      if x < 0 then cutOffNormal mu s else return x
-
     chain :: ListT (Prob IO) (Vec NC Double)
     chain = fmap fst $ do
       logPost <- lift logPosts
       g <- LT.liftIO createSystemRandom
       runLLH (metropolis 0.1) logPost myStart g
+
+
+cutOffNormal :: PrimMonad m => Double -> Double -> Prob m Double
+cutOffNormal mu s = do
+  x <- normal mu s
+  if x < 0 then cutOffNormal mu s else return x
+
 
 myData :: Vec NE Int
 myData = V.fromList' [1, 0, 1]
@@ -91,6 +94,7 @@ myLogPrior = const 0
 
 myStart :: Num a => ContVec NC a
 myStart = V.fromList' [1, 1]
+
 
 {-
 
