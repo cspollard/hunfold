@@ -11,6 +11,8 @@ import qualified Data.Vector.Fixed.Cont        as V
 import           Likelihood
 import qualified List.Transformer              as LT
 import           Matrix
+import           System.IO                     (IOMode (..), hPutStrLn,
+                                                openFile)
 import           System.Random.MWC.Probability
 
 
@@ -18,29 +20,31 @@ logPostLH :: Num a => (b -> a) -> (b -> a) -> b -> a
 logPostLH logCondProb logPrior sigmas = logCondProb sigmas + logPrior sigmas
 
 logPostLHNIter :: Num a => Int -> (b -> a) -> (b -> a) -> b -> a
-logPostLHNIter n logCondProb = head . drop n . iterate (logPostLH logCondProb)
+-- TODO
+-- which is better here?
+-- logPostLHNIter n logCondProb = head . drop n . iterate (logPostLH logCondProb)
+logPostLHNIter n logCondProb logPrior sigmas = fromIntegral n * logCondProb sigmas + logPrior sigmas
 
 
 -- test case:
--- 3 data bins
+-- 3 effect bins
 -- 2 cause bins
 
 type NE = ToPeano 3
 type NC = ToPeano 2
 
 test :: Int -> Int -> Int -> IO ()
-test niters nintsamps nextsamps = do
-    writeFile "test.dat" "bin1, bin2\n"
-    _ <- withSystemRandom . samples nextsamps
-        $ LT.runListT . LT.take nintsamps $
-        do
-          [x1, x2] <- V.toList <$> chain
-          LT.liftIO . appendFile "test.dat"
-            $ show x1 ++ ", " ++ show x2 ++ "\n"
+test niters nextsamps nintsamps = do
+  f <- openFile "test.dat" WriteMode
+  hPutStrLn f "bin1, bin2"
+  _ <- withSystemRandom . samples nextsamps
+      $ LT.runListT . LT.take nintsamps $
+      do
+        [x1, x2] <- V.toList <$> chain
+        LT.liftIO . hPutStrLn f
+          $ show x1 ++ ", " ++ show x2
 
-    return ()
-
-
+  return ()
 
   where
     -- NB: the first row of the migration matrix should be the inefficiency of
@@ -59,14 +63,17 @@ test niters nintsamps nextsamps = do
     -- the "bank" of (logs of) conditional probabilities functions to marginalize over "the world"
     logCondProbs :: Prob IO ((Vec NC Double -> Double) -> Vec NC Double -> Double)
     logCondProbs = do
-      lumi <- cutOffNormal 1 0.2
-      return $ logPostLH (logProb myData myBkgs mySmears lumi)
+      lumi <- cutOffNormal 1 0.1
+      bkgs <- myBkgs
+      smears <- mySmears
+      return $ logPostLH (logProb myData bkgs smears lumi)
 
     chain :: ListT (Prob IO) (Vec NC Double)
     chain = fmap fst $ do
       logPost <- lift logPosts
+      start <- lift myStart
       g <- LT.liftIO createSystemRandom
-      runLLH (metropolis 0.1) logPost myStart g
+      runLLH (metropolis 0.1) logPost start g
 
 
 cutOffNormal :: PrimMonad m => Double -> Double -> Prob m Double
@@ -76,24 +83,25 @@ cutOffNormal mu s = do
 
 
 myData :: Vec NE Int
-myData = V.fromList' [1, 0, 1]
+myData = V.fromList' [0, 1, 0]
 
-myBkgs :: Fractional a => Vec NE a
-myBkgs = V.fromList' [0.5, 0.0, 0.5]
+myBkgs :: PrimMonad m => Prob m (Vec NE Double)
+myBkgs = do
+  norm <- normal 1 0.2
+  return . fmap (*norm) $ V.fromList' [0.5, 0.0, 0.5]
 
-mySmears :: Fractional a => Mat NC (S NE) a
-mySmears = V.fromList'
-  [ V.fromList' [0.0, 0.0]
-  , V.fromList' [0.5, 0.0]
-  , V.fromList' [0.0, 1.0]
-  , V.fromList' [0.5, 0.0]
-  ]
+mySmears :: PrimMonad m => Prob m (Mat NC (S NE) Double)
+mySmears = do
+  let effs1 = V.fromList' [0.0, 0.5, 0.0, 0.5]
+  let effs2 = V.fromList' [0.0, 0.0, 1.0, 0.0]
+  return . transpose
+    $ V.fromList' [effs1, effs2]
 
 myLogPrior :: Num a => Vec NC a -> a
 myLogPrior = const 0
 
-myStart :: Num a => ContVec NC a
-myStart = V.fromList' [1, 1]
+myStart :: PrimMonad m => Prob m (Vec NC Double)
+myStart = sequence $ V.fromList' [uniform, uniform]
 
 
 {-
