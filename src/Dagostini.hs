@@ -17,13 +17,13 @@ import           System.Random.MWC.Probability
 
 
 logPostLH :: Num a => (b -> a) -> (b -> a) -> b -> a
-logPostLH logCondProb logPrior sigmas = logCondProb sigmas + logPrior sigmas
+logPostLH logLikelhood logPrior sigmas = logLikelhood sigmas + logPrior sigmas
 
 logPostLHNIter :: Num a => Int -> (b -> a) -> (b -> a) -> b -> a
 -- TODO
 -- which is better here?
 -- logPostLHNIter n logCondProb = head . drop n . iterate (logPostLH logCondProb)
-logPostLHNIter n logCondProb logPrior sigmas = fromIntegral n * logCondProb sigmas + logPrior sigmas
+logPostLHNIter n logLikelhood logPrior sigmas = fromIntegral n * logLikelhood sigmas + logPrior sigmas
 
 
 -- test case:
@@ -38,39 +38,41 @@ test niters nextsamps nintsamps = do
   f <- openFile "test.dat" WriteMode
   hPutStrLn f "bin1, bin2"
   _ <- withSystemRandom . samples nextsamps
-      $ LT.runListT . LT.take nintsamps $
-      do
-        [x1, x2] <- V.toList <$> chain
+      $ LT.runListT . LT.take nintsamps
+      $ do
+        [x1, x2] <- V.toList <$> sampledPosterior
         LT.liftIO . hPutStrLn f
           $ show x1 ++ ", " ++ show x2
 
   return ()
 
   where
-    -- NB: the first row of the migration matrix should be the inefficiency of
-    --     each cause bin.
-    logProb dat bkgs smear lumi sigmas =
+    logLikelihood dat bkgs smear lumi sigmas =
       -- xs: the prediction based on the given cross sections
+      -- NB: the first row of the migration matrix should be the inefficiency of
+      --     each cause bin.
       let xs = fmap (*lumi) $ (+) <$> tailV (multMV smear sigmas) <*> bkgs
       in sum $ logPoissonP <$> dat <*> xs
 
-    -- the "bank" of (logs of) posterior distributions iterated n times
-    logPosts :: Prob IO (Vec NC Double -> Double)
-    logPosts = do
-      logCondProb <- logCondProbs
-      return $ iterate logCondProb myLogPrior !! niters
+    -- the probability distribution of log posterior distributions given
+    -- the probability distribution of log likelhood distributions
+    logPosteriors :: Prob IO (Vec NC Double -> Double)
+    logPosteriors = do
+      llhf <- logLikelihoods
+      return $ logPostLHNIter niters llhf (const 0)
 
-    -- the "bank" of (logs of) conditional probabilities functions to marginalize over "the world"
-    logCondProbs :: Prob IO ((Vec NC Double -> Double) -> Vec NC Double -> Double)
-    logCondProbs = do
-      lumi <- cutOffNormal 1 0.1
+    -- the probability distribution of log likelihood functions given the data
+    -- and a particular "world"
+    logLikelihoods :: Prob IO (Vec NC Double -> Double)
+    logLikelihoods = do
+      lumi <- cutOffNormal 1 0.3
       bkgs <- myBkgs
       smears <- mySmears
-      return $ logPostLH (logProb myData bkgs smears lumi)
+      return $ logLikelihood myData bkgs smears lumi
 
-    chain :: ListT (Prob IO) (Vec NC Double)
-    chain = fmap fst $ do
-      logPost <- lift logPosts
+    sampledPosterior :: ListT (Prob IO) (Vec NC Double)
+    sampledPosterior = fmap fst $ do
+      logPost <- lift logPosteriors
       start <- lift myStart
       g <- LT.liftIO createSystemRandom
       runLLH (metropolis 0.1) logPost start g
@@ -96,9 +98,6 @@ mySmears = do
   let effs2 = V.fromList' [0.0, 0.0, 1.0, 0.0]
   return . transpose
     $ V.fromList' [effs1, effs2]
-
-myLogPrior :: Num a => Vec NC a -> a
-myLogPrior = const 0
 
 myStart :: PrimMonad m => Prob m (Vec NC Double)
 myStart = sequence $ V.fromList' [uniform, uniform]
