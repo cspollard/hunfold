@@ -1,4 +1,6 @@
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds       #-}
+{-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE TypeFamilies    #-}
 
 module Matrix
   ( module X
@@ -12,11 +14,17 @@ import           Data.Monoid
 import           Data.Vector.Fixed.Cont as X (Arity (..), ContVec (..), S,
                                               ToPeano, Z)
 import qualified Data.Vector.Fixed.Cont as V
+import           GHC.Exts               (IsList (..))
 
 type Vec = ContVec
 
 instance (Show a, Arity n) => Show (ContVec n a) where
-  show = show . toList
+  show = show . V.toList
+
+
+instance Arity n => IsList (ContVec n a) where
+  type Item (ContVec n a) = a
+  fromList = V.fromList'
 
 -- rows are innermost
 type Mat n m a = Vec m (Vec n a)

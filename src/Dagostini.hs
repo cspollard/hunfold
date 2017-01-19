@@ -1,8 +1,10 @@
 {-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedLists           #-}
 {-# LANGUAGE RankNTypes                #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE TypeOperators             #-}
+{-# LANGUAGE FlexibleContexts             #-}
 
 module Dagostini where
 
@@ -54,21 +56,16 @@ test niters nextsamps nintsamps = do
       let xs = fmap (*lumi) $ (+) <$> tailV (multMV smear sigmas) <*> bkgs
       in sum $ logPoissonP <$> dat <*> xs
 
-    -- the probability distribution of log posterior distributions given
-    -- the probability distribution of log likelhood distributions
+    -- the probability distribution of log posterior functions given the data
+    -- and distribution of "worlds"
     logPosteriors :: Prob IO (Vec NC Double -> Double)
     logPosteriors = do
-      llhf <- logLikelihoods
-      return $ logPostLHNIter niters llhf (const 0)
-
-    -- the probability distribution of log likelihood functions given the data
-    -- and a particular "world"
-    logLikelihoods :: Prob IO (Vec NC Double -> Double)
-    logLikelihoods = do
       lumi <- cutOffNormal 1 0.3
       bkgs <- myBkgs
       smears <- mySmears
-      return $ logLikelihood myData bkgs smears lumi
+      let llhf = logLikelihood myData bkgs smears lumi
+      -- NB: flat spectrum prior
+      return $ logPostLHNIter niters llhf (const 0)
 
     sampledPosterior :: ListT (Prob IO) (Vec NC Double)
     sampledPosterior = fmap fst $ do
@@ -85,22 +82,22 @@ cutOffNormal mu s = do
 
 
 myData :: Vec NE Int
-myData = V.fromList' [0, 1, 0]
+myData = [0, 1, 0]
 
 myBkgs :: PrimMonad m => Prob m (Vec NE Double)
 myBkgs = do
   norm <- normal 1 0.2
-  return . fmap (*norm) $ V.fromList' [0.5, 0.0, 0.5]
+  return . fmap (*norm) $ [0.5, 0.0, 0.5]
 
 mySmears :: PrimMonad m => Prob m (Mat NC (S NE) Double)
 mySmears = do
-  let effs1 = V.fromList' [0.0, 0.5, 0.0, 0.5]
-  let effs2 = V.fromList' [0.0, 0.0, 1.0, 0.0]
+  let effs1 = [0.0, 0.5, 0.0, 0.5]
+  let effs2 = [0.0, 0.0, 1.0, 0.0]
   return . transpose
-    $ V.fromList' [effs1, effs2]
+    $ [effs1, effs2]
 
 myStart :: PrimMonad m => Prob m (Vec NC Double)
-myStart = sequence $ V.fromList' [uniform, uniform]
+myStart = sequence [uniform, uniform]
 
 
 {-
