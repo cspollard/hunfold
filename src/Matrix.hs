@@ -25,6 +25,7 @@ instance (Show a, Arity n) => Show (ContVec n a) where
 instance Arity n => IsList (ContVec n a) where
   type Item (ContVec n a) = a
   fromList = V.fromList'
+  toList = V.toList
 
 -- rows are innermost
 type Mat n m a = Vec m (Vec n a)

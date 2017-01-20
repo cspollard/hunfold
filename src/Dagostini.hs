@@ -1,19 +1,20 @@
 {-# LANGUAGE DataKinds                 #-}
+{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedLists           #-}
 {-# LANGUAGE RankNTypes                #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE TypeOperators             #-}
-{-# LANGUAGE FlexibleContexts             #-}
 
 module Dagostini where
 
 import           Control.Monad.Trans.Class     (lift)
+import           Data.List                     (intersperse)
 import qualified Data.Vector.Fixed.Cont        as V
 import           Likelihood
 import qualified List.Transformer              as LT
 import           Matrix
-import           System.IO                     (IOMode (..), hPutStrLn,
+import           System.IO                     (IOMode (..), hClose, hPutStrLn,
                                                 openFile)
 import           System.Random.MWC.Probability
 
@@ -29,24 +30,28 @@ logPostLHNIter n logLikelhood logPrior sigmas = fromIntegral n * logLikelhood si
 
 
 -- test case:
--- 3 effect bins
+-- 5 effect bins
 -- 2 cause bins
 
-type NE = ToPeano 3
-type NC = ToPeano 2
+type NE = ToPeano 14
+type NC = ToPeano 10
 
 test :: Int -> Int -> Int -> IO ()
 test niters nextsamps nintsamps = do
   f <- openFile "test.dat" WriteMode
-  hPutStrLn f "bin1, bin2"
+
+  let n = V.arity (undefined :: NC) - 1
+  hPutStrLn f
+    $ mconcat . intersperse ", bin" $ "bin0" : fmap show [1..n]
+
   _ <- withSystemRandom . samples nextsamps
       $ LT.runListT . LT.take nintsamps
       $ do
-        [x1, x2] <- V.toList <$> sampledPosterior
+        xs <- sampledPosterior
         LT.liftIO . hPutStrLn f
-          $ show x1 ++ ", " ++ show x2
+          $ mconcat . intersperse ", " . V.toList $ show <$> xs
 
-  return ()
+  hClose f
 
   where
     logLikelihood dat bkgs smear lumi sigmas =
@@ -60,19 +65,23 @@ test niters nextsamps nintsamps = do
     -- and distribution of "worlds"
     logPosteriors :: Prob IO (Vec NC Double -> Double)
     logPosteriors = do
-      lumi <- cutOffNormal 1 0.3
-      bkgs <- myBkgs
-      smears <- mySmears
+      lumi <- pure 1
+      bkgs <- (pure.pure) 0
+      smears <- pure dagSmear2
       let llhf = logLikelihood myData bkgs smears lumi
       -- NB: flat spectrum prior
-      return $ logPostLHNIter niters llhf (const 0)
+      return $ logPostLHNIter niters llhf nonNegLogPrior
+
+    nonNegLogPrior xs = if any (< 0) xs then neginf else 0
+      where neginf = negate $ 1/0
 
     sampledPosterior :: ListT (Prob IO) (Vec NC Double)
     sampledPosterior = fmap fst $ do
       logPost <- lift logPosteriors
-      start <- lift myStart
+      -- TODO
+      -- find minimum instead of arbitrary start
       g <- LT.liftIO createSystemRandom
-      runLLH (metropolis 0.1) logPost start g
+      runLLH (metropolis 10) logPost myStart g
 
 
 cutOffNormal :: PrimMonad m => Double -> Double -> Prob m Double
@@ -82,22 +91,51 @@ cutOffNormal mu s = do
 
 
 myData :: Vec NE Int
-myData = [0, 1, 0]
+-- myData = fmap floor . tailV . multMV dagSmear2 . fmap (*150). fmap dagFun1 $ [1..10]
+myData = fmap floor . tailV . multMV dagSmear2 . fmap dagFun2 $ [1..10]
 
 myBkgs :: PrimMonad m => Prob m (Vec NE Double)
-myBkgs = do
-  norm <- normal 1 0.2
-  return . fmap (*norm) $ [0.5, 0.0, 0.5]
+myBkgs =
+  -- do
+  --   norm <- normal 1 0.2
+  --   return . fmap (*norm) $ [1.1, 3.5, 2.1, 0.5, 0.2]
+  (pure.pure) 0
 
-mySmears :: PrimMonad m => Prob m (Mat NC (S NE) Double)
-mySmears = do
-  let effs1 = [0.0, 0.5, 0.0, 0.5]
-  let effs2 = [0.0, 0.0, 1.0, 0.0]
-  return . transpose
-    $ [effs1, effs2]
+-- taken from d'agostini
+mySmears :: Mat NC (S NE) Double
+mySmears = dagSmear2
 
-myStart :: PrimMonad m => Prob m (Vec NC Double)
-myStart = sequence [uniform, uniform]
+
+nE :: Int
+nE = arity (undefined :: NE)
+
+nC :: Int
+nC = arity (undefined :: NC)
+
+dagSmear2 :: Mat NC (S NE) Double
+dagSmear2 = transpose
+  [ [0.1, 0.045, 0.09, 0.945, 0, 0, 0, 0, 0, 0, 0, 0.18, 0.27, 0.27, 0.09]
+  , [0.1, 0, 0.054, 0.072, 0.054, 0, 0, 0, 0.045, 0.135, 0.36, 0.18, 0, 0, 0]
+  , [0.1, 0, 0, 0.045, 0.045, 0, 0, 0.135, 0.27, 0.27, 0.45, 0, 0, 0.045, 0.045]
+  , [0.1, 0, 0, 0, 0.45,0.18, 0.315, 0.27, 0.045, 0, 0, 0, 0.045, 0, 0]
+  , [0.1, 0, 0, 0, 0.225, 0.36, 0.18, 0.045, 0, 0.045, 0.045, 0, 0, 0, 0]
+  , [0.1, 0, 0, 0, 0.18, 0.45, 0.18, 0, 0, 0.045, 0.045, 0, 0, 0, 0]
+  , [0.1, 0, 0, 0, 0.36, 0.315, 0.225, 0, 0.045, 0, 0, 0, 0, 0, 0]
+  , [0.1, 0, 0, 0.225, 0.405, 0.225, 0, 0.045, 0, 0, 0, 0, 0, 0, 0]
+  , [0.1, 0, 0.225, 0.36, 0.225, 0, 0.045, 0, 0.045, 0, 0, 0, 0, 0, 0]
+  , [0.1, 0.225, 0.405, 0.225, 0, 0, 0, 0, 0, 0.045, 0, 0, 0, 0, 0]
+  ]
+
+dagFun1 :: Int -> Double
+dagFun1 x = (*) 150 $ 11 - fromIntegral x
+
+dagFun2 :: Int -> Double
+dagFun2 x = (*) 25 $ fromIntegral $ x*x
+
+myStart :: Vec NC Double
+myStart =
+  V.replicate
+    $ fromIntegral (sum myData) / fromIntegral nC
 
 
 {-
