@@ -33,8 +33,8 @@ logPostLHNIter n logLikelhood logPrior sigmas = fromIntegral n * logLikelhood si
 -- 5 effect bins
 -- 2 cause bins
 
-type NE = ToPeano 14
-type NC = ToPeano 10
+type NE = ToPeano 2
+type NC = ToPeano 2
 
 test :: Int -> Int -> Int -> IO ()
 test niters nextsamps nintsamps = do
@@ -67,9 +67,8 @@ test niters nextsamps nintsamps = do
     logPosteriors = do
       lumi <- pure 1
       bkgs <- (pure.pure) 0
-      smears <- pure dagSmear2
+      smears <- pure mySmears
       let llhf = logLikelihood myData bkgs smears lumi
-      -- NB: flat spectrum prior
       return $ logPostLHNIter niters llhf nonNegLogPrior
 
     nonNegLogPrior xs = if any (< 0) xs then neginf else 0
@@ -81,7 +80,7 @@ test niters nextsamps nintsamps = do
       -- TODO
       -- find minimum instead of arbitrary start
       g <- LT.liftIO createSystemRandom
-      runLLH (metropolis 10) logPost myStart g
+      runLLH (metropolis 1) logPost myStart g
 
 
 cutOffNormal :: PrimMonad m => Double -> Double -> Prob m Double
@@ -89,10 +88,8 @@ cutOffNormal mu s = do
   x <- normal mu s
   if x < 0 then cutOffNormal mu s else return x
 
-
 myData :: Vec NE Int
--- myData = fmap floor . tailV . multMV dagSmear2 . fmap (*150). fmap dagFun1 $ [1..10]
-myData = fmap floor . tailV . multMV dagSmear2 . fmap dagFun2 $ [1..10]
+myData = [1, 3]
 
 myBkgs :: PrimMonad m => Prob m (Vec NE Double)
 myBkgs =
@@ -101,16 +98,21 @@ myBkgs =
   --   return . fmap (*norm) $ [1.1, 3.5, 2.1, 0.5, 0.2]
   (pure.pure) 0
 
--- taken from d'agostini
 mySmears :: Mat NC (S NE) Double
-mySmears = dagSmear2
-
+mySmears = transpose
+  [ [0.25, 0.5, 0.25]
+  , [0.1, 0.2, 0.7]
+  ]
 
 nE :: Int
 nE = arity (undefined :: NE)
 
 nC :: Int
 nC = arity (undefined :: NC)
+
+{-
+-- myData = fmap floor . tailV . multMV dagSmear2 . fmap (*150). fmap dagFun1 $ [1..10]
+myData = fmap floor . tailV . multMV dagSmear2 . fmap dagFun2 $ [1..10]
 
 dagSmear2 :: Mat NC (S NE) Double
 dagSmear2 = transpose
@@ -131,6 +133,8 @@ dagFun1 x = (*) 150 $ 11 - fromIntegral x
 
 dagFun2 :: Int -> Double
 dagFun2 x = (*) 25 $ fromIntegral $ x*x
+
+-}
 
 myStart :: Vec NC Double
 myStart =
