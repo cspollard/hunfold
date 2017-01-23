@@ -5,10 +5,8 @@ module Likelihood
   ( module X
   , runMC, findMaximum
   , weightedProposal, metropolis
-  , testMetro
   ) where
 
-import           Data.Functor.Identity
 import           List.Transformer              as X (ListT (..), Step (..),
                                                      liftIO, runListT)
 import           Numeric.AD
@@ -30,18 +28,6 @@ runMC :: PrimMonad m
 runMC t s g = ListT $ do
   s' <- sample (t s) g
   return . Cons s' $ runMC t s' g
-
-testMetro :: IO ()
-testMetro = do
-  withSystemRandom . asGenIO $
-    \g -> runListT $
-      do
-        x <- runMC prop (T (Identity 0) 1) g
-        liftIO $ print (x :: T (Identity Double) Double)
-
-  return ()
-
-  where prop = weightedProposal (metropolis 1) (const 1)
 
 weightedProposal :: (RealFloat b, Variate b, PrimMonad m)
                  => (a -> Prob m a) -> (a -> b) -> T a b -> Prob m (T a b)

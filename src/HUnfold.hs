@@ -7,13 +7,14 @@
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE TypeOperators             #-}
 
-module Dagostini where
+module HUnfold where
 
 import           Data.List              (intersperse)
 import qualified Data.Vector.Fixed.Cont as V
 import           Likelihood
 import qualified List.Transformer       as LT
 import           Matrix
+import           Probability
 import           System.IO              (IOMode (..), hClose, hPutStrLn,
                                          openFile)
 
