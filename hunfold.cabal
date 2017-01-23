@@ -18,8 +18,10 @@ cabal-version:       >=1.10
 library
   exposed-modules:     HUnfold
                      , Matrix
-                     , Likelihood
+                     , MarkovChain
                      , Probability
+                     , Metropolis
+
   -- other-modules:
   -- other-extensions:
   build-depends:       base == 4.9.*

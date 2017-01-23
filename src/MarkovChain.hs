@@ -1,10 +1,10 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE RankNTypes                #-}
 
-module Likelihood
+module MarkovChain
   ( module X
   , runMC, findMaximum
-  , weightedProposal, metropolis
+  , weightedProposal
   ) where
 
 import           List.Transformer              as X (ListT (..), Step (..),
@@ -40,9 +40,6 @@ weightedProposal t logLH (T x y) =
     accept <- bernoulli prob
     return $ if accept then T prop score else T x y
 
-
-metropolis :: (Variate b, InvErf b, PrimMonad m, Traversable t) => b -> t b -> Prob m (t b)
-metropolis r = traverse (\x -> (+x) <$> normal 0 r)
 
 
 findMaximum :: (Traversable f, Ord a, Fractional a)
