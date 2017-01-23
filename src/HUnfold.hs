@@ -1,11 +1,7 @@
 {-# LANGUAGE DataKinds                 #-}
-{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedLists           #-}
-{-# LANGUAGE RankNTypes                #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE TypeFamilies              #-}
-{-# LANGUAGE TypeOperators             #-}
 
 module HUnfold where
 
@@ -22,13 +18,6 @@ import           System.IO              (IOMode (..), hClose, hPutStrLn,
 
 logPostLH :: Num a => (b -> a) -> (b -> a) -> b -> a
 logPostLH logLikelhood logPrior sigmas = logLikelhood sigmas + logPrior sigmas
-
-logPostLHNIter :: Num a => Int -> (b -> a) -> (b -> a) -> b -> a
--- TODO
--- which is better here?
--- logPostLHNIter n logCondProb = head . drop n . iterate (logPostLH logCondProb)
-logPostLHNIter n logLikelhood logPrior sigmas = fromIntegral n * logLikelhood sigmas + logPrior sigmas
-
 
 -- test case:
 -- 5 effect bins

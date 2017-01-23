@@ -1,6 +1,5 @@
-{-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE OverloadedLists #-}
-{-# LANGUAGE TypeFamilies    #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Matrix
   ( module X
