@@ -64,6 +64,7 @@ test nsamps = do
     logPost :: Floating a => ContVec NC a -> a
     logPost = logLikelihood myData myBkgs mySmears 1.0
 
+    nonNegLogPrior :: (Foldable t1, Ord a, Num a, Fractional t) => t1 a -> t
     nonNegLogPrior xs = if any (< 0) xs then neginf else 0
       where neginf = negate $ 1/0
 
