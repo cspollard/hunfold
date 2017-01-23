@@ -14,7 +14,7 @@ import           Data.Number.Erf               as X
 import           System.Random.MWC             as X (Gen, asGenIO,
                                                      withSystemRandom)
 import           System.Random.MWC.Probability as X (Prob, Variate, sample,
-                                                     samples, uniform)
+                                                     samples, uniform, uniformR)
 
 lnsqrt2pi
     :: Fractional a

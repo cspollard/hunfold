@@ -65,7 +65,7 @@ test nburn nsamps = do
         LT.drop nburn
           $ runMC (prop (logPostLH nonNegLogPrior logPost)) (T start $ logPost start) g
 
-    prop = weightedProposal (metropolis 0.05)
+    prop = weightedProposal . dynamicMetropolis $ exp <$> uniformR (-7, -2)
 
 
 cutOffNormal :: (InvErf b, Variate b, PrimMonad m, Ord b) => b -> b -> Prob m b
