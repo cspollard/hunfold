@@ -1,5 +1,5 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies              #-}
 
 module Matrix
   ( module X
@@ -10,8 +10,8 @@ module Matrix
 
 import           Data.Foldable
 import           Data.Monoid
-import           Data.Vector.Fixed.Cont as X (Arity (..), ContVec (..), S,
-                                              ToPeano, Z)
+import           Data.Vector.Fixed      as X (ContVec, S, Z)
+import           Data.Vector.Fixed.Cont as X (Arity (..), ToPeano)
 import qualified Data.Vector.Fixed.Cont as V
 import           GHC.Exts               (IsList (..))
 

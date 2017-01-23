@@ -28,7 +28,7 @@ runMC t s g = ListT $ do
 
 
 -- a proposal weighted by a lot likelihood function
-weightedProposal :: (RealFloat b, Variate b, PrimMonad m)
+weightedProposal :: (Floating b, Ord b, Variate b, PrimMonad m)
                  => (a -> Prob m a) -> (a -> b) -> T a b -> Prob m (T a b)
 weightedProposal t logLH (T x y) =
   do
