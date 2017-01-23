@@ -28,9 +28,8 @@ test :: Int -> Int -> IO ()
 test nburn nsamps = do
   f <- openFile "test.dat" WriteMode
 
-  let n = arity (undefined :: NC) - 1
   hPutStrLn f
-    $ mconcat . intersperse ", bin" $ "bin0" : fmap show [1..n]
+    $ mconcat . intersperse ", bin" $ "bin0" : fmap show [1..(nC-1)]
 
   _ <- withSystemRandom . asGenIO
       $ \g -> LT.runListT . LT.take nsamps
