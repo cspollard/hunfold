@@ -27,7 +27,7 @@ runMC t s g = ListT $ do
   return . Cons s' $ runMC t s' g
 
 
--- a proposal weighted by a lot likelihood function
+-- a proposal weighted by a log likelihood function
 weightedProposal :: (Floating b, Ord b, Variate b, PrimMonad m)
                  => (a -> Prob m a) -> (a -> b) -> T a b -> Prob m (T a b)
 weightedProposal t logLH (T x y) =
@@ -39,7 +39,6 @@ weightedProposal t logLH (T x y) =
     let prob = exp . min 0 $ score - y
     accept <- bernoulli prob
     return $ if accept then T prop score else T x y
-
 
 
 findMaximum :: (Traversable f, Ord a, Fractional a)

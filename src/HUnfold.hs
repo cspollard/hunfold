@@ -1,15 +1,24 @@
 {-# LANGUAGE DataKinds                 #-}
+{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedLists           #-}
+{-# LANGUAGE OverloadedStrings         #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TemplateHaskell           #-}
+
 
 module HUnfold where
 
-import           Data.List              (intersperse)
-import qualified Data.Vector.Fixed.Cont as V
-import qualified List.Transformer       as LT
-import           System.IO              (IOMode (..), hClose, hPutStrLn,
-                                         openFile)
+import           Control.Applicative (liftA2)
+import           Control.Lens
+import           Data.List           (intersperse)
+import           Data.Map.Strict     (Map)
+import qualified Data.Map.Strict     as M
+import           Data.Text           (Text)
+import qualified Data.Text           as T
+import qualified List.Transformer    as LT
+import           System.IO           (IOMode (..), hClose, hPutStr, hPutStrLn,
+                                      openFile)
 
 import           MarkovChain
 import           Matrix
@@ -18,69 +27,17 @@ import           Probability
 
 
 
-logPostLH :: Num a => (b -> a) -> (b -> a) -> b -> a
-logPostLH logLikelhood logPrior sigmas = logLikelhood sigmas + logPrior sigmas
-
 -- test case
 
 type NE = ToPeano 4
 type NC = ToPeano 5
 
-test :: Int -> Int -> IO ()
-test nburn nsamps = do
-  f <- openFile "test.dat" WriteMode
-
-  hPutStrLn f
-    $ mconcat . intersperse ", bin" $ "llh" : fmap show [0..(nC-1)]
-
-  _ <- withSystemRandom . asGenIO
-      $ \g -> LT.runListT . LT.take nsamps
-        $ do
-          (T xs llh :: T (ContVec NC Double) Double) <- gen g
-          let ys = V.cons llh xs
-          LT.liftIO . hPutStrLn f
-            $ mconcat . intersperse ", " . V.toList $ show <$> ys
-  hClose f
-
-  where
-    logLikelihood dat bkgs smear lumi sigmas =
-      -- xs: the prediction based on the given cross sections
-      -- NB: the first row of the migration matrix should be the inefficiency of
-      --     each cause bin.
-      let xs = fmap (*lumi) $ (+) <$> multMV smear sigmas <*> bkgs
-      in sum $ logPoissonP <$> dat <*> xs
-
-    logPost :: Floating a => ContVec NC a -> a
-    logPost = logLikelihood zeeData zeeBkgs zeeSmear zeeLumi
-
-    nonNegLogPrior :: (Foldable t1, Ord a, Num a, Fractional t) => t1 a -> t
-    nonNegLogPrior xs = if any (< 0) xs then neginf else 0
-      where neginf = negate $ 1/0
-
-    gen :: (InvErf b, Variate b, PrimMonad m, RealFloat b)
-        => Gen (PrimState m) -> ListT m (T (ContVec NC b) b)
-    gen g =
-      do
-        let start = pure $ (fromIntegral (sum zeeData) - sum zeeBkgs * zeeLumi) / fromIntegral (nC * zeeLumi)
-        LT.drop nburn
-          $ runMC (prop (logPostLH nonNegLogPrior logPost)) (T start $ logPost start) g
-
-    prop = weightedProposal . dynamicMetropolis $ exp <$> uniformR (-7, -2)
 
 
 cutOffNormal :: (InvErf b, Variate b, PrimMonad m, Ord b) => b -> b -> Prob m b
 cutOffNormal mu s = do
   x <- normal mu s
   if x < 0 then cutOffNormal mu s else return x
-
-zeeBkgs :: Fractional a => Vec NE a
-zeeBkgs = [0.32, 0.12, 0.015, 0.0026]
-
-mySmears :: Fractional a => Mat NC NE a
-mySmears = zeeSmear
-
-zeeLumi :: Num t => t
-zeeLumi = 34000
 
 zeeSmear :: Fractional a => Mat NC NE a
 zeeSmear = transpose
@@ -99,6 +56,140 @@ nE = arity (undefined :: NE)
 
 nC :: Int
 nC = arity (undefined :: NC)
+
+-- what do I need from model?
+--
+
+type Hist = Vec
+type Param n m = (Double -> (Model n m -> Model n m, Double))
+
+data Model n m =
+  Model
+    { _mBkgs   :: Map Text (Hist m Double)
+    , _mSigs   :: Hist n Double
+    , _mSmears :: Mat n m Double
+    , _mLumi   :: Double
+    }
+
+makeLenses ''Model
+
+myModel :: Model NC NE
+myModel =
+  Model
+    (M.singleton "ttbar" [0.32, 0.12, 0.015, 0.0026])
+    (pure 1)
+    zeeSmear
+    34000
+
+myModelParams :: Map Text (Param NC NE)
+myModelParams = M.fromList
+  [ ("ttbarnorm", \x -> (over (mBkgs.ix "ttbar") (fmap (*(1+x))), logNormalP 0 0.2 x))
+  , ("sigma0", \x -> (set (mSigs.element 0) x, 0))
+  , ("sigma1", \x -> (set (mSigs.element 1) x, 0))
+  , ("sigma2", \x -> (set (mSigs.element 2) x, 0))
+  , ("sigma3", \x -> (set (mSigs.element 3) x, 0))
+  , ("sigma4", \x -> (set (mSigs.element 4) x, 0))
+  , ("lumi", \x -> (over mLumi (*(1+x)), logNormalP 0 0.2 x))
+  ]
+
+myInitialParams :: Map Text Double
+myInitialParams = M.fromList
+  [ ("ttbarnorm", 0.0)
+  , ("sigma0", 1.0)
+  , ("sigma1", 1.0)
+  , ("sigma2", 1.0)
+  , ("sigma3", 1.0)
+  , ("sigma4", 1.0)
+  , ("lumi", 0.0)
+  ]
+
+
+
+modelPred :: (Arity n, Arity m) => Model n m -> Hist m Double
+modelPred (Model bkgs sigs smears lumi) =
+  let bkgTot = foldl (liftA2 (+)) (pure 0) bkgs
+  in fmap (*lumi) $ (+) <$> multMV smears sigs <*> bkgTot
+
+
+appParams :: Map Text (Param n m)
+          -> Model n m
+          -> Map Text Double
+          -> (Model n m, Double)
+appParams fs m ps =
+  let fs' = M.intersectionWith ($) fs ps
+  in foldr (\(f, p) (model, prior) -> (f model, prior+p)) (m, 0) fs'
+
+
+modelLogPosterior :: (Arity m, Arity n, Integral a)
+                  => Map Text (Param n m)
+                  -> Model n m
+                  -> Hist m a
+                  -> Map Text Double
+                  -> Double
+modelLogPosterior fs model mdata ps =
+  let (model', prior) = appParams fs model ps
+      preds = modelPred model'
+      logLH = sum $ logPoissonP <$> mdata <*> preds
+  in logLH + prior
+
+
+-- hamiltonian MCMC?
+
+test :: Int -> Int -> IO ()
+test nburn nsamps = do
+  f <- openFile "test.dat" WriteMode
+
+  hPutStrLn f
+    $ mconcat . intersperse ", " . fmap T.unpack $ "llh" : M.keys myInitialParams
+
+  _ <- withSystemRandom . asGenIO
+      $ \g -> LT.runListT . LT.take nsamps
+        $ do
+          (T xs llh) <- gen g
+          LT.liftIO . hPutStr f $ show llh ++ ", "
+          LT.liftIO . hPutStrLn f
+            $ mconcat . intersperse ", " . M.elems $ show <$> xs
+  hClose f
+
+  where
+    gen g =
+      do
+        let f = modelLogPosterior myModelParams myModel zeeData
+        let prop = weightedProposal . dynamicMetropolis
+                    $ exp <$> uniformR (-7, -3)
+        LT.drop nburn
+          $ runMC (prop f) (T myInitialParams $ f myInitialParams) g
+
+
+{-
+
+type Model f n a = f a -> (Hist n a, a)
+
+modelLLH :: (Foldable t, Applicative t, Integral c, Floating b) => (a -> (t b, b)) -> t c -> a -> b
+modelLLH model mdata ps =
+  let (mpred, mprior) = model ps
+  in mprior + sum (logPoissonP <$> mdata <*> mpred)
+
+
+addBkg :: (Arity n, Num a) => Model f n a -> Model f n a -> Model f n a
+addBkg bkgModel model fx =
+  let (bkgHist, bkgPrior) = bkgModel fx
+      (totHist, totPrior) = model fx
+  in ((+) <$> bkgHist <*> totHist, bkgPrior + totPrior)
+
+ttbarBkg :: (Arity n, Floating a) => Model (Map Text) n a
+ttbarBkg ps =
+  let norm = ps M.! "ttbarNorm"
+      prior = logNormalP 1 0.2 norm
+  in ((*norm) <$> , prior)
+
+signal :: (Arity n, Num a) => Model (Map Text) n a
+signal ps =
+  let h = (ps M.!) <$> ["sigma1", "sigma2", "sigma3", "sigma4"]
+  in (h, 1)
+-}
+
+
 
 {-
 myData :: Vec NE Int
