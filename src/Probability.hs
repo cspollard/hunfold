@@ -12,6 +12,7 @@ module Probability
 import           Control.Monad.Primitive       as X (PrimMonad, PrimState)
 import           Data.Number.Erf               as X
 import           System.Random.MWC             as X (Gen, asGenIO,
+                                                     createSystemRandom,
                                                      withSystemRandom)
 import           System.Random.MWC.Probability as X (Prob, Variate, sample,
                                                      samples, uniform, uniformR)

@@ -5,6 +5,7 @@
 {-# LANGUAGE OverloadedStrings         #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeFamilies              #-}
 
 
 module HUnfold where
@@ -17,12 +18,12 @@ import qualified Data.Map.Strict     as M
 import           Data.Text           (Text)
 import qualified Data.Text           as T
 import qualified List.Transformer    as LT
-import           System.IO           (IOMode (..), hClose, hPutStr, hPutStrLn,
-                                      openFile)
+import           Numeric.AD
+import           System.IO           (IOMode (..), hPutStr, hPutStrLn, withFile)
 
+import           Hamiltonian
 import           MarkovChain
 import           Matrix
-import           Metropolis
 import           Probability
 
 
@@ -31,7 +32,6 @@ import           Probability
 
 type NE = ToPeano 4
 type NC = ToPeano 5
-
 
 
 cutOffNormal :: (InvErf b, Variate b, PrimMonad m, Ord b) => b -> b -> Prob m b
@@ -61,19 +61,21 @@ nC = arity (undefined :: NC)
 --
 
 type Hist = Vec
-type Param n m = (Double -> (Model n m -> Model n m, Double))
+type Param n m a = (a -> (Model n m a -> Model n m a, a))
 
-data Model n m =
+
+data Model n m a =
   Model
-    { _mBkgs   :: Map Text (Hist m Double)
-    , _mSigs   :: Hist n Double
-    , _mSmears :: Mat n m Double
-    , _mLumi   :: Double
+    { _mBkgs   :: Map Text (Hist m a)
+    , _mSigs   :: Hist n a
+    , _mSmears :: Mat n m a
+    , _mLumi   :: a
     }
 
 makeLenses ''Model
 
-myModel :: Model NC NE
+
+myModel :: Fractional a => Model NC NE a
 myModel =
   Model
     (M.singleton "ttbar" [0.32, 0.12, 0.015, 0.0026])
@@ -81,51 +83,53 @@ myModel =
     zeeSmear
     34000
 
-myModelParams :: Map Text (Param NC NE)
+
+myModelParams :: Floating a => Map Text (Param NC NE a)
 myModelParams = M.fromList
-  [ ("ttbarnorm", \x -> (over (mBkgs.ix "ttbar") (fmap (*(1+x))), logNormalP 0 0.2 x))
+  [ ("ttbarnorm", \x -> (over (mBkgs.ix "ttbar") (fmap (*x)), logLogNormalP 1 0.2 x))
   , ("sigma0", \x -> (set (mSigs.element 0) x, 0))
   , ("sigma1", \x -> (set (mSigs.element 1) x, 0))
   , ("sigma2", \x -> (set (mSigs.element 2) x, 0))
   , ("sigma3", \x -> (set (mSigs.element 3) x, 0))
   , ("sigma4", \x -> (set (mSigs.element 4) x, 0))
-  , ("lumi", \x -> (over mLumi (*(1+x)), logNormalP 0 0.2 x))
+  , ("lumi", \x -> (over mLumi (*x), logLogNormalP 1 0.2 x))
   ]
 
-myInitialParams :: Map Text Double
+
+myInitialParams :: Fractional a => Map Text a
 myInitialParams = M.fromList
-  [ ("ttbarnorm", 0.0)
-  , ("sigma0", 1.0)
-  , ("sigma1", 1.0)
-  , ("sigma2", 1.0)
-  , ("sigma3", 1.0)
-  , ("sigma4", 1.0)
-  , ("lumi", 0.0)
+  [ ("ttbarnorm", 1)
+  , ("sigma0", 1)
+  , ("sigma1", 1)
+  , ("sigma2", 0.1)
+  , ("sigma3", 0.01)
+  , ("sigma4", 0.001)
+  , ("lumi", 1)
   ]
 
 
-
-modelPred :: (Arity n, Arity m) => Model n m -> Hist m Double
+modelPred :: (Arity n, Arity m, Num a) => Model n m a -> Hist m a
 modelPred (Model bkgs sigs smears lumi) =
   let bkgTot = foldl (liftA2 (+)) (pure 0) bkgs
   in fmap (*lumi) $ (+) <$> multMV smears sigs <*> bkgTot
 
 
-appParams :: Map Text (Param n m)
-          -> Model n m
-          -> Map Text Double
-          -> (Model n m, Double)
+appParams :: Num a
+          => Map Text (Param n m a)
+          -> Model n m a
+          -> Map Text a
+          -> (Model n m a, a)
 appParams fs m ps =
   let fs' = M.intersectionWith ($) fs ps
   in foldr (\(f, p) (model, prior) -> (f model, prior+p)) (m, 0) fs'
 
 
-modelLogPosterior :: (Arity m, Arity n, Integral a)
-                  => Map Text (Param n m)
-                  -> Model n m
+modelLogPosterior :: (Arity m, Arity n, Integral a, Floating b)
+                  => Map Text (Param n m b)
+                  -> Model n m b
                   -> Hist m a
-                  -> Map Text Double
-                  -> Double
+                  -> Map Text b
+                  -> b
 modelLogPosterior fs model mdata ps =
   let (model', prior) = appParams fs model ps
       preds = modelPred model'
@@ -133,63 +137,32 @@ modelLogPosterior fs model mdata ps =
   in logLH + prior
 
 
--- hamiltonian MCMC?
-
 test :: Int -> Int -> IO ()
 test nburn nsamps = do
-  f <- openFile "test.dat" WriteMode
 
-  hPutStrLn f
-    $ mconcat . intersperse ", " . fmap T.unpack $ "llh" : M.keys myInitialParams
+  let llh = modelLogPosterior myModelParams myModel zeeData
+  -- TODO
+  -- remove test
+  -- let llh m = let x = m M.! "sigma0" in logLogNormalP 0 1 x
+  let prop = hamiltonian 3 0.0001 llh (grad llh)
+              -- weightedProposal $ metropolis 0.01
+              -- $ dynamicMetropolis $ exp <$> uniformR (-7, -3)
 
-  _ <- withSystemRandom . asGenIO
-      $ \g -> LT.runListT . LT.take nsamps
+  g <- createSystemRandom
+
+  let l = LT.drop nburn $ runMC prop (T myInitialParams $ llh myInitialParams) g
+
+  withFile "test.dat" WriteMode
+    $ \f -> do
+      hPutStrLn f
+        $ mconcat . intersperse ", " . fmap T.unpack $ "llh" : M.keys myInitialParams
+
+      LT.runListT . LT.take nsamps
         $ do
-          (T xs llh) <- gen g
+          (T xs llh :: T (Map Text Double) Double) <- l
           LT.liftIO . hPutStr f $ show llh ++ ", "
           LT.liftIO . hPutStrLn f
             $ mconcat . intersperse ", " . M.elems $ show <$> xs
-  hClose f
-
-  where
-    gen g =
-      do
-        let f = modelLogPosterior myModelParams myModel zeeData
-        let prop = weightedProposal . dynamicMetropolis
-                    $ exp <$> uniformR (-7, -3)
-        LT.drop nburn
-          $ runMC (prop f) (T myInitialParams $ f myInitialParams) g
-
-
-{-
-
-type Model f n a = f a -> (Hist n a, a)
-
-modelLLH :: (Foldable t, Applicative t, Integral c, Floating b) => (a -> (t b, b)) -> t c -> a -> b
-modelLLH model mdata ps =
-  let (mpred, mprior) = model ps
-  in mprior + sum (logPoissonP <$> mdata <*> mpred)
-
-
-addBkg :: (Arity n, Num a) => Model f n a -> Model f n a -> Model f n a
-addBkg bkgModel model fx =
-  let (bkgHist, bkgPrior) = bkgModel fx
-      (totHist, totPrior) = model fx
-  in ((+) <$> bkgHist <*> totHist, bkgPrior + totPrior)
-
-ttbarBkg :: (Arity n, Floating a) => Model (Map Text) n a
-ttbarBkg ps =
-  let norm = ps M.! "ttbarNorm"
-      prior = logNormalP 1 0.2 norm
-  in ((*norm) <$> , prior)
-
-signal :: (Arity n, Num a) => Model (Map Text) n a
-signal ps =
-  let h = (ps M.!) <$> ["sigma1", "sigma2", "sigma3", "sigma4"]
-  in (h, 1)
--}
-
-
 
 {-
 myData :: Vec NE Int
