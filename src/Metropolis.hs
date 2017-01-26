@@ -1,7 +1,9 @@
+{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Metropolis where
 
+import           Control.Lens
 import           Control.Monad (forM)
 
 import           Probability
@@ -19,9 +21,9 @@ dynamicMetropolis pr tb =
     return $ x + r
 
 
--- ASSUMES ZIPABLE TYPES
-multibandMetropolis :: (Variate b, InvErf b, PrimMonad m, Traversable t, Applicative t)
-                  => t b -> t b -> Prob m (t b)
+multibandMetropolis :: ( Ixed s, TraversableWithIndex (Index s) t,
+                         InvErf (IxValue s), Variate (IxValue s), PrimMonad m )
+                    => s -> t (IxValue s) -> Prob m (t (IxValue s))
 multibandMetropolis tr tb = do
-  rs <- sequence $ normal 0 <$> tr
-  return $ (+) <$> tb <*> rs
+  let f i x = (+x) <$> normal 0 (tr ^?! ix i)
+  imapM f tb
