@@ -157,51 +157,8 @@ test nskip nsamps = do
 
   let llh = modelLogPosterior myModelParams myModel zeeData
       start = last . take 100 $ conjugateGradientAscent llh myInitialParams
-
-{-
-  print "orig params"
-  print myInitialParams
-
-  print "orig llh:"
-  print $ llh myInitialParams
-
-  print "orig pred:"
-  print . modelPred . fst $ appParams myModelParams myModel myInitialParams
-
-  print "grad:"
-  print $ grad llh myInitialParams
-
-  print "best params"
-  print start
-
-  print "best llh:"
-  print $ llh start
-
-  let h' = hessian (negate . llh) start
-      (matToMap, h :: Matrix Double) = toMatrix h'
-      cov = inv h
-      transf = chol (sym cov)
-
-  print "hessian':"
-  print h'
-
-  print "hessian:"
-  print h
-
-  print "covariance:"
-  print cov
-
-  print "hess*cov:"
-  print $ h <> cov
-
-  print "variable transform:"
-  print transf
-
-  let llhf' = llh . inV (transf #>)
-  -}
-
-  let prop = -- weightedProposal (dynamicMetropolis $ exp <$> uniformR (-7, -3)) llh
-              weightedProposal (multibandMetropolis myParamRadii) llh
+      prop = weightedProposal (multibandMetropolis myParamRadii) llh
+              -- weightedProposal (dynamicMetropolis $ exp <$> uniformR (-7, -3)) llh
               -- hamiltonian 3 0.005 llh (grad llh)
               -- weightedProposal $ metropolis 0.01
 
@@ -214,8 +171,7 @@ test nskip nsamps = do
           Cons x l' -> return . Cons x $ takeEvery n l'
           Nil       -> return Nil
 
-
-  let l = takeEvery nskip $ runMC prop (T start $ llh start) g
+  let chain = takeEvery nskip $ runMC prop (T start $ llh start) g
 
   withFile "test.dat" WriteMode
     $ \f -> do
@@ -224,7 +180,7 @@ test nskip nsamps = do
 
       LT.runListT . LT.take nsamps
         $ do
-          (T xs llhxs :: T (Map Text Double) Double) <- l
+          (T xs llhxs :: T (Map Text Double) Double) <- chain
           LT.liftIO . hPutStr f $ show llhxs ++ ", "
           LT.liftIO . hPutStrLn f
             $ mconcat . intersperse ", " . M.elems $ show <$> xs
