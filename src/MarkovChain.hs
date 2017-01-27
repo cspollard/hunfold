@@ -28,7 +28,7 @@ runMC t s g = ListT $ do
 
 
 -- a proposal weighted by a log likelihood function
-weightedProposal :: (Floating b, Ord b, Variate b, PrimMonad m)
+weightedProposal :: (Floating b, Variate b, PrimMonad m, RealFloat b)
                  => (a -> Prob m a) -> (a -> b) -> T a b -> Prob m (T a b)
 weightedProposal t logLH (T x y) =
   do
@@ -37,7 +37,7 @@ weightedProposal t logLH (T x y) =
     -- TODO
     -- what happens with NaNs?
     let prob = exp . min 0 $ score - y
-    accept <- bernoulli prob
+    accept <- if isNaN prob then return False else bernoulli prob
     return $ if accept then T prop score else T x y
 
 

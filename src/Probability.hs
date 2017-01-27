@@ -40,9 +40,11 @@ logLogNormalP m s x =
     in e - log s - x' - lnsqrt2pi
 
 logPoissonP
-    :: (Integral a, Floating b)
+    :: (Integral a, Floating b, Ord b)
     => a -> b -> b
-logPoissonP k l = fromIntegral k * log l - l - logFactorial k
+logPoissonP k l
+  | k < 0 = error "logPoissonP: negative counts"
+  | otherwise = fromIntegral k * log l - l - logFactorial k
 
 logFactorial
     :: (Integral a, Floating b)
