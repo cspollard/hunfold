@@ -23,7 +23,6 @@ import qualified List.Transformer    as LT
 import           Numeric.AD
 import           System.IO           (IOMode (..), hPutStr, hPutStrLn, withFile)
 
-import           Hamiltonian
 import           MarkovChain
 import           Matrix
 import           Metropolis
@@ -48,6 +47,14 @@ zeeSmear = transpose
   , [0.07, 0.87, 0.06, 0.0]
   , [0.0, 0.08, 0.84, 0.08]
   , [0.0, 0.0, 0.05, 0.95]
+  ]
+
+zeeSmear2 :: Fractional a => Mat NC NE a
+zeeSmear2 = transpose
+  [ [0.80, 0.15, 0.0, 0.0]
+  , [0.03, 0.90, 0.03, 0.0]
+  , [0.0, 0.09, 0.84, 0.07]
+  , [0.0, 0.0, 0.02, 0.92]
   ]
 
 zeeData :: Vec NE Int
@@ -93,6 +100,7 @@ myModelParams = M.fromList
   , ("sigma1", set (mSigs.element 1) &&& nonNegPrior)
   , ("sigma2", set (mSigs.element 2) &&& nonNegPrior)
   , ("sigma3", set (mSigs.element 3) &&& nonNegPrior)
+  , ("smear", \x -> (set mSmears (linearCombM x (1-x) zeeSmear zeeSmear2), logNormalP 0.5 0.25 x))
   , ("lumi", \x -> (over mLumi (*x), logLogNormalP 0 0.2 x))
   ]
 
@@ -109,6 +117,7 @@ myInitialParams = M.fromList
   , ("sigma1", 0.5)
   , ("sigma2", 0.1)
   , ("sigma3", 0.01)
+  , ("smear", 0.5)
   , ("lumi", 1)
   ]
 
@@ -119,6 +128,7 @@ myParamRadii = M.fromList
   , ("sigma1", 0.01)
   , ("sigma2", 0.01)
   , ("sigma3", 0.001)
+  , ("smear", 0.25)
   , ("lumi", 0.1)
   ]
 

@@ -34,13 +34,6 @@ hamiltonian n eps logLLHF dlogLLHF t@(T qs logLLHqs) = do
       prob = min 1 . exp $ negate logLLHqs - uqs' + kinetic ps - kinetic ps'
   move <- bernoulli prob
 
-  -- liftIO . putStrLn $ "ps: " ++ show ps
-  -- liftIO . putStrLn $ "du qs: " ++ show (du qs)
-  -- liftIO . putStrLn $ "qs: " ++ show qs
-  -- liftIO . putStrLn $ "qs': " ++ show qs'
-  -- liftIO . putStrLn $ "ps': " ++ show ps'
-  -- liftIO . putStrLn $ "prob': " ++ show prob
-
   return $ if move then T qs' (negate uqs') else t
 
   where

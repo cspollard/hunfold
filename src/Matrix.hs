@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TypeFamilies              #-}
 
@@ -6,8 +7,10 @@ module Matrix
   , Vec, Mat
   , transpose, inner, dot, outer, (><)
   , multMM, multMV, multVM, tailV
+  , linearCombM
   ) where
 
+import           Control.Applicative    (liftA2)
 import           Data.Foldable
 import           Data.Monoid
 import           Data.Vector.Fixed      as X (ContVec, S, Z)
@@ -67,3 +70,17 @@ infix 5 ><
 outer :: (Traversable t, Functor f)
       => (a1 -> a -> b) -> t a1 -> f a -> f (t b)
 outer f v v' = traverse f v <$> v'
+
+
+
+linearCombM :: (Applicative f1, Applicative f, Num c) => c -> c -> f (f1 c) -> f (f1 c) -> f (f1 c)
+linearCombM a b ma mb =
+  let ma' = (fmap.fmap) (*a) ma
+      mb' = (fmap.fmap) (*b) mb
+  in liftA2 (+) <$> ma' <*> mb'
+
+
+-- gzipWith
+--   :: (FunctorWithIndex (Index s) f, Ixed s)
+--   => (a -> IxValue s -> b) -> f a -> s -> f b
+-- gzipWith f xs ys = imap (\i x -> f x $ ys ^?! ix i) xs
