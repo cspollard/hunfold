@@ -60,7 +60,7 @@ nC :: Int
 nC = arity (undefined :: NC)
 
 -- TODO
--- move this to hmatrix form
+-- move this to hmatrix form?
 
 type Hist = Vec
 type Param n m a = (a -> (Model n m a -> Model n m a, a))
