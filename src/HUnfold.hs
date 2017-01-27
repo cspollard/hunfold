@@ -23,6 +23,7 @@ import qualified List.Transformer    as LT
 import           Numeric.AD
 import           System.IO           (IOMode (..), hPutStr, hPutStrLn, withFile)
 
+import           Hamiltonian
 import           MarkovChain
 import           Matrix
 import           Metropolis
@@ -111,6 +112,16 @@ myInitialParams = M.fromList
   , ("lumi", 1)
   ]
 
+myParamRadii :: Fractional a => Map Text a
+myParamRadii = M.fromList
+  [ ("ttbarnorm", 0.1)
+  , ("sigma0", 0.1)
+  , ("sigma1", 0.01)
+  , ("sigma2", 0.01)
+  , ("sigma3", 0.001)
+  , ("lumi", 0.1)
+  ]
+
 
 modelPred :: (Arity n, Arity m, Num a) => Model n m a -> Hist m a
 modelPred (Model bkgs sigs smears lumi) =
@@ -189,9 +200,9 @@ test nskip nsamps = do
   let llhf' = llh . inV (transf #>)
   -}
 
-  let prop = weightedProposal (dynamicMetropolis $ exp <$> uniformR (-7, -3)) llh
-              -- weightedProposal (multibandMetropolis radii) llh
-              -- hamiltonian 3 0.0001 llh (grad llh)
+  let prop = -- weightedProposal (dynamicMetropolis $ exp <$> uniformR (-7, -3)) llh
+              weightedProposal (multibandMetropolis myParamRadii) llh
+              -- hamiltonian 3 0.005 llh (grad llh)
               -- weightedProposal $ metropolis 0.01
 
 
