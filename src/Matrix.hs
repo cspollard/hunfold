@@ -78,9 +78,3 @@ linearCombM a b ma mb =
   let ma' = (fmap.fmap) (*a) ma
       mb' = (fmap.fmap) (*b) mb
   in liftA2 (+) <$> ma' <*> mb'
-
-
--- gzipWith
---   :: (FunctorWithIndex (Index s) f, Ixed s)
---   => (a -> IxValue s -> b) -> f a -> s -> f b
--- gzipWith f xs ys = imap (\i x -> f x $ ys ^?! ix i) xs

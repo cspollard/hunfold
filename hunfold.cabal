@@ -31,7 +31,6 @@ library
                      , transformers == 0.5.*
                      , mwc-random == 0.13.*
                      , mwc-probability == 1.2.*
-                     , declarative == 0.2.*
                      , list-transformer == 1.0.*
                      , ad == 4.3.*
                      , erf == 2.0.*
