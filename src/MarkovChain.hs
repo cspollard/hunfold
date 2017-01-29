@@ -3,17 +3,12 @@
 
 module MarkovChain
   ( module X
-  , runMC, findMaximum
+  , runMC
   , weightedProposal
   ) where
 
 import           List.Transformer              as X (ListT (..), Step (..),
                                                      liftIO, runListT)
-import           Numeric.AD
-import           Numeric.AD.Internal.Forward   (Forward)
-import           Numeric.AD.Internal.Kahn
-import           Numeric.AD.Internal.On
-import           Numeric.AD.Internal.Or        hiding (T)
 import           Probability
 import           System.Random.MWC             as X (Gen, asGenIO,
                                                      withSystemRandom)
@@ -39,10 +34,3 @@ weightedProposal t logLH (T x y) =
     let prob = exp . min 0 $ score - y
     accept <- if isNaN prob then return False else bernoulli prob
     return $ if accept then T prop score else T x y
-
-
-findMaximum :: (Traversable f, Ord a, Fractional a)
-            => (forall s. Chosen s => f (Or s (On (Forward (Forward a))) (Kahn a)) -> Or s (On (Forward (Forward a))) (Kahn a))
-            -> f a -> f a
-findMaximum llhf start = last . take n . conjugateGradientAscent llhf $ start
-  where n = length start + 1
