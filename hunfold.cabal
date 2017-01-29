@@ -16,8 +16,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     HUnfold
-                     , Matrix
+  exposed-modules:     Matrix
                      , MarkovChain
                      , Probability
                      , Metropolis
@@ -32,12 +31,8 @@ library
                      , mwc-random == 0.13.*
                      , mwc-probability == 1.2.*
                      , list-transformer == 1.0.*
-                     , ad == 4.3.*
                      , erf == 2.0.*
-                     , containers == 0.5.*
-                     , text == 1.2.*
                      , lens == 4.14.*
-                     , reflection == 2.1.*
                      , hmatrix == 0.17.*
   hs-source-dirs:      src
   default-language:    Haskell2010
