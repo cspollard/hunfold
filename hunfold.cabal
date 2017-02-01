@@ -34,6 +34,7 @@ library
                      , erf == 2.0.*
                      , lens == 4.14.*
                      , hmatrix == 0.17.*
+                     , declarative == 0.2.*
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:         -Wall -fwarn-monomorphism-restriction -fwarn-incomplete-record-updates -fwarn-unused-do-bind
