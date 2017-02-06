@@ -22,7 +22,6 @@ library
                      , Metropolis
                      , Hamiltonian
                      , InMatrix
-                     , MatrixHelpers
 
   -- other-modules:
   -- other-extensions:

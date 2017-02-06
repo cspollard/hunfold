@@ -1,80 +1,82 @@
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.Normalise #-}
+{-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE RankNTypes                #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE TypeOperators             #-}
 
 module Matrix
   ( module X
-  , Vec, Mat
-  , transpose, inner, dot, outer, (><)
-  , multMM, multMV, multVM, tailV
-  , linearCombM
+  , M
+  , toVectorM
+  , fromVectorM
+  , reifyMatrix
+  , reifyMatrix1
+  , reifyMatrix2
+  , reifySqMatrix
   ) where
 
-import           Control.Applicative    (liftA2)
-import           Data.Foldable
-import           Data.Monoid
-import           Data.Vector.Fixed      as X (ContVec, S, Z)
-import           Data.Vector.Fixed.Cont as X (Arity (..), ToPeano)
-import qualified Data.Vector.Fixed.Cont as V
-import           GHC.Exts               (IsList (..))
+import           Data.Proxy
+import           Data.Vector  (Vector)
+import qualified Data.Vector  as V
+import           GHC.TypeLits
+import           Linear       as X
+import           Linear.V     as X
 
-type Vec = ContVec
+type M (n :: Nat) (m :: Nat) a = V n (V m a)
 
-instance (Show a, Arity n) => Show (ContVec n a) where
-  show = show . V.toList
+instance KnownNat n => Trace (V n)
 
+fromVectorM :: (Dim n, Dim m) => Vector (Vector a) -> Maybe (M n m a)
+fromVectorM m = do
+  vs <- traverse fromVector m
+  fromVector vs
 
-instance Arity n => IsList (ContVec n a) where
-  type Item (ContVec n a) = a
-  fromList = V.fromList'
-  toList = V.toList
-
--- rows are innermost
-type Mat n m a = Vec m (Vec n a)
-
-transpose :: (Arity n, Arity m) => Mat n m a -> Mat m n a
-transpose = sequenceA
-
-inner :: (Monoid c, Foldable t, Applicative t)
-      => (a -> b -> c) -> t a -> t b -> c
-inner f v v' = fold $ f <$> v <*> v'
-
-dot :: (Num a, Foldable t, Applicative t)
-    => t a -> t a -> a
-dot v v' = getSum $ inner (\x y -> Sum $ x * y) v v'
-
--- TODO
--- write these more generally
--- eg. I'm pretty sure these are special cases of tensor products (or something)
-
-multMM :: (Traversable t1, Traversable t, Applicative t1, Applicative f, Num b)
-       => t (t1 b) -> t1 (f b) -> f (t b)
-multMM m m' = outer dot m $ sequenceA m'
-
-multMV :: (Traversable t, Foldable f, Applicative f, Num b)
-       => t (f b) -> f b -> t b
-multMV = traverse dot
-
-multVM :: (Traversable t1, Traversable t, Applicative t1, Applicative t, Num b)
-       => t1 b -> t1 (t b) -> t b
-multVM v m = traverse dot (sequenceA m) v
-
-tailV :: ContVec (S n) a -> ContVec n a
-tailV = V.tail
-
--- arbitrary cartesian product
-infix 5 ><
-(><) :: (Traversable t, Functor f) => t a -> f b -> f (t (a, b))
-(><) = outer (,)
-
-outer :: (Traversable t, Functor f)
-      => (a1 -> a -> b) -> t a1 -> f a -> f (t b)
-outer f v v' = traverse f v <$> v'
+toVectorM :: M n m a -> Vector (Vector a)
+toVectorM = toVector . fmap toVector
 
 
+reifyMatrix :: Vector (Vector a) -> (forall n m. (KnownNat n, KnownNat m) => M n m a -> r) -> Maybe r
+reifyMatrix m f = do
+  let l1 = V.length m
+      l2 = if l1 == 0 then 0 else V.length (m V.! 0)
+  reifyDimNat l1 $
+    \(Proxy :: Proxy k1) -> reifyDimNat l2 $
+      \(Proxy :: Proxy k2) -> do
+        (mV :: M k2 k1 a) <- fromVectorM m
+        return $ f mV
 
-linearCombM :: (Applicative f1, Applicative f, Num c) => c -> c -> f (f1 c) -> f (f1 c) -> f (f1 c)
-linearCombM a b ma mb =
-  let ma' = (fmap.fmap) (*a) ma
-      mb' = (fmap.fmap) (*b) mb
-  in liftA2 (+) <$> ma' <*> mb'
+reifySqMatrix
+  :: forall a r. Vector (Vector a) -> (forall n. KnownNat n => M n n a -> r) -> Maybe r
+reifySqMatrix m f = do
+  let l1 = V.length m
+  reifyDimNat l1 $
+    \(Proxy :: Proxy n) -> do
+      (mV :: M n n a) <- fromVectorM m
+      return $ f mV
+
+
+reifyMatrix1
+  :: forall n a r. KnownNat n
+  => Vector (Vector a) -> (forall m. KnownNat m => M n m a -> r) -> Maybe r
+reifyMatrix1 m f = do
+  let l1 = reflectDim (Proxy :: Proxy n)
+      l2 = if l1 == 0 then 0 else V.length (m V.! 0)
+  reifyDimNat l2 $
+    \(Proxy :: Proxy k2) -> do
+      (mV :: M n k2 a) <- fromVectorM m
+      return $ f mV
+
+
+reifyMatrix2
+  :: forall m a r. KnownNat m
+  => Vector (Vector a) -> (forall n. KnownNat n => M n m a -> r) -> Maybe r
+reifyMatrix2 m f = do
+  let l1 = V.length m
+  reifyDimNat l1 $
+    \(Proxy :: Proxy k1) -> do
+      (mV :: M k1 m a) <- fromVectorM m
+      return $ f mV
