@@ -8,6 +8,7 @@ module InMatrix
   ( module X
   , toMatrix, inM, inM2
   , toVector, inV
+  , invM, eigM, cholM
   ) where
 
 import           Control.Lens          hiding (Indexable)
@@ -34,6 +35,16 @@ inM2 f xs ys =
   let (bx, mx) = toMatrix xs
       (_, my) = toMatrix ys
   in bx $ f mx my
+
+invM :: (Field b, Traversable t1, Traversable t) => t (t1 b) -> t (t1 b)
+invM = inM (pinvTol 1e-3)
+
+cholM :: (Field b, Traversable t1, Traversable t) => t (t1 b) -> t (t1 b)
+cholM = inM (chol . sym)
+
+eigM :: (Traversable t1, Traversable t) => t (t1 (Complex Double)) -> t (t1 (Complex Double))
+eigM = inM (snd . eig)
+
 
 toVector :: (Container Vector b, Traversable t)
          => t b -> (Vector b -> t b, Vector b)

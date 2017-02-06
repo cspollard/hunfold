@@ -21,6 +21,7 @@ library
                      , Probability
                      , Metropolis
                      , Hamiltonian
+                     , InMatrix
 
   -- other-modules:
   -- other-extensions:
