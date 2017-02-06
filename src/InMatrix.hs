@@ -37,7 +37,7 @@ inM2 f xs ys =
   in bx $ f mx my
 
 invM :: (Field b, Traversable t1, Traversable t) => t (t1 b) -> t (t1 b)
-invM = inM (pinvTol 1e-3)
+invM = inM inv
 
 cholM :: (Field b, Traversable t1, Traversable t) => t (t1 b) -> t (t1 b)
 cholM = inM (chol . sym)
