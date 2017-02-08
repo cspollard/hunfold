@@ -118,7 +118,7 @@ main = do
       putStrLn ""
 
       -- find the maximum likelihood starting location
-      let xs = take 100 $ conjugateGradientAscent logLH start
+      let xs = take 1000 $ conjugateGradientAscent logLH start
           x = last xs
 
       start' <-
@@ -156,7 +156,7 @@ main = do
       -- then find the transform from canonical variables
       -- (with mu ~0 and sigma ~1) to the original variables.
       let hess' = hessian (negate . logLH) start'
-          cov = symM . toError $ invM hess'
+          cov = toError $ invM hess'
           t = cholM cov
           it = toError $ invM t
           transform' v = (t !* v) ^+^ start'
