@@ -11,12 +11,14 @@ module Probability
   ( module X
   , logNormalP, logLogNormalP, logPoissonP
   , standard, normal, exponential, truncatedExp
-  , gamma, chiSquare, bernoulli
+  , gamma, chiSquare, bernoulli, dirichlet
+
   , T(..)
   ) where
 
 import           Control.Monad.Primitive       as X (PrimMonad, PrimState)
 import           Data.Number.Erf               as X
+import           Data.Traversable              (mapAccumL)
 import           System.Random.MWC             as X (Gen, asGenIO,
                                                      createSystemRandom,
                                                      withSystemRandom)
@@ -147,3 +149,11 @@ chiSquare n
 
 bernoulli :: (Variate a, PrimMonad m, Ord a) => a -> Prob m Bool
 bernoulli p = (< p) <$> uniform
+
+dirichlet :: (Traversable f, Variate a, Fractional a, InvErf a, Ord a, PrimMonad m) => f a -> Prob m (f a)
+dirichlet as = do
+  zs <- traverse (`gamma` 1) as
+  return $ zs `normTo` 1
+
+normTo :: (Fractional a, Traversable f) => f a -> a -> f a
+normTo xs y = let (s, xs') = mapAccumL (\sofar x -> (x+sofar, x*y/s)) 0 xs in xs'
