@@ -136,7 +136,12 @@ main = do
             return x
 
       putStrLn "starting params:"
-      print $ V.zip mpnames start'
+      print mpnames
+      print start'
+      putStrLn ""
+      putStrLn "gradient of log-likelihood given starting params:"
+      print $ gLogLH start'
+      putStrLn ""
       putStrLn "log-likelihood of starting params:"
       print $ logLH start'
       putStrLn ""
@@ -151,7 +156,7 @@ main = do
       -- then find the transform from canonical variables
       -- (with mu ~0 and sigma ~1) to the original variables.
       let hess' = hessian (negate . logLH) start'
-          cov = toError $ invM hess'
+          cov = symM . toError $ invM hess'
           t = cholM cov
           it = toError $ invM t
           transform' v = (t !* v) ^+^ start'
