@@ -20,21 +20,48 @@ library
                      , MarkovChain
                      , Probability
                      , InMatrix
+                     , Model
 
-  -- other-modules:
-  -- other-extensions:
   build-depends:       base == 4.9.*
-                    , primitive == 0.6.*
-                    , transformers == 0.5.*
-                    , mwc-random == 0.13.*
-                    , mwc-probability == 1.2.*
-                    , list-transformer == 1.0.*
-                    , erf == 2.0.*
-                    , mcmc-types == 1.0.*
-                    , lens == 4.14.*
-                    , matrix == 0.3.*
-                    , linear == 1.20.*
-                    , vector == 0.11.*
+                     , primitive == 0.6.*
+                     , transformers == 0.5.*
+                     , mwc-random == 0.13.*
+                     , mwc-probability == 1.2.*
+                     , list-transformer == 1.0.*
+                     , erf == 2.0.*
+                     , mcmc-types == 1.0.*
+                     , lens == 4.14.*
+                     , matrix == 0.3.*
+                     , linear == 1.20.*
+                     , vector == 0.11.*
+                     , aeson == 0.11.*
+                     , text == 1.2.*
+                     , containers == 0.5.*
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:         -Wall -fwarn-monomorphism-restriction -fwarn-incomplete-record-updates -fwarn-unused-do-bind
+  ghc-prof-options:    -Wall -fwarn-monomorphism-restriction -fwarn-incomplete-record-updates -fwarn-unused-do-bind -O0 -fprof-auto -caf-all
+
+
+executable run-hunfold
+  main-is:             Main.hs
+  build-depends:       base == 4.9.*
+                     , hunfold == 0.1.*
+                     , mwc-random == 0.13.*
+                     , mwc-probability == 1.2.*
+                     , list-transformer == 1.0.*
+                     , lens == 4.14.*
+                     , linear == 1.20.*
+                     , optparse-applicative == 0.12.*
+                     , vector == 0.11.*
+                     , bytestring == 0.10.*
+                     , declarative == 0.2.*
+                     , ad == 4.3.*
+                     , aeson == 0.11.*
+                     , text == 1.2.*
+                     , containers == 0.5.*
+                     , hunfold == 0.1.*
+  hs-source-dirs:      app/
+  default-language:    Haskell2010
+  ghc-options:         -Wall -fwarn-monomorphism-restriction -fwarn-incomplete-record-updates -fwarn-unused-do-bind
+  ghc-prof-options:    -Wall -fwarn-monomorphism-restriction -fwarn-incomplete-record-updates -fwarn-unused-do-bind -O0 -fprof-auto -caf-all -rtsopts

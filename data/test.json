@@ -1,0 +1,61 @@
+{
+    "comment" : "here the data has been set to L*(m*v+b)
+                  where L is the luminosity, m is the migration matrix,
+                  v is the signal vector, and b is the background"
+    , "true spectrum" : [10, 5, 2.5]
+
+    , "Data" : [925, 512, 250, 25]
+    , "Nominal" : {
+        "Bkgs" : { "ttbar" : [1, 0.5, 0.25, 0.125] }
+        , "Sig" : [0, 0, 0]
+        , "Mig" :
+            [ [0.8, 0.05, 0.0, 0.0]
+            , [0.05, 0.8, 0.05, 0.0]
+            , [0.0, 0.05, 0.8, 0.05]
+            ]
+
+        , "Lumi" : 100
+    }
+
+    , "ModelVars" : {
+        "lumi" : {
+            "InitialValue" : 0
+            , "Prior" : { "Normal" : {"Mu" : 0, "Sigma" : 0.1} }
+            , "Variation" : {
+                "Lumi" : 200
+            }
+        }
+
+        , "ttbarnorm" : {
+            "InitialValue" : 0
+            , "Prior" : { "Normal" : {"Mu" : 0, "Sigma" : 0.2} }
+            , "Variation" : {
+                "Bkgs" : { "ttbar" : [2, 1, 0.5, 0.25] }
+            }
+        }
+
+        , "sigma0" : {
+            "InitialValue" : 10
+            , "Prior" : "Flat"
+            , "Variation" : {
+                "Sig" : [1, 0, 0]
+            }
+        }
+
+        , "sigma1" : {
+            "InitialValue" : 5
+            , "Prior" : "Flat"
+            , "Variation" : {
+                "Sig" : [0, 1, 0]
+            }
+        }
+
+        , "sigma2" : {
+            "InitialValue" : 2.5
+            , "Prior" : "Flat"
+            , "Variation" : {
+                "Sig" : [0, 0, 1]
+            }
+        }
+    }
+}
