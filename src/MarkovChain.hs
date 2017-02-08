@@ -6,15 +6,14 @@ module MarkovChain
   , runMC
   ) where
 
+import           Control.Monad.Primitive          as X (PrimMonad (..))
+import           Control.Monad.Trans.State.Strict
+import           Data.Sampling.Types              as X (Transition)
 import           List.Transformer                 as X (ListT (..), Step (..),
                                                         liftIO, runListT)
-import           Numeric.MCMC
-
-import           Control.Monad.Trans.State.Strict
 import           System.Random.MWC                as X (Gen, asGenIO,
                                                         withSystemRandom)
-import           System.Random.MWC.Probability    as X (Prob, Variate, sample,
-                                                        samples, uniform)
+import           System.Random.MWC.Probability    as X (sample)
 
 runMC :: PrimMonad m
       => Transition m a -> a -> Gen (PrimState m) -> ListT m a
