@@ -1,6 +1,12 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE RankNTypes                #-}
 
+{-
+ - note that parts of this module are taken
+ - directly from the source code of the mwc-probability
+ - package with thanks to the authors.
+ -}
+
 module Probability
   ( module X
   , logNormalP, logLogNormalP, logPoissonP
