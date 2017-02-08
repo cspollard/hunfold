@@ -1,5 +1,7 @@
 {
-    "ClosureData" :  [46001, 3642, 625, 128]
+    "ClosureData -- can be switched in for \"Data\" if you want"
+        :  [46001, 3642, 625, 128]
+
     , "Data" :  [44812, 3241, 494, 90]
     , "Nominal" : {
         "Bkgs" : {
