@@ -1,0 +1,69 @@
+{
+    "ClosureData" :  [46001, 3642, 625, 128]
+    , "Data" :  [44812, 3241, 494, 90]
+    , "Nominal" : {
+        "Bkgs" : {
+            "ttbar" : [1.95e-2, 8.38e-4, 1.85e-4, 0.0]
+            , "Zjets" : [1.82e-1, 9.92e-5, 0.0, 0.0]
+        }
+        , "Sig" : [0, 0, 0, 0]
+        , "Mig" :
+            [ [0.98, 0.02, 0.00, 0.00]
+            , [0.10, 0.87, 0.03, 0.00]
+            , [0.01, 0.10, 0.86, 0.03]
+            , [0.00, 0.01, 0.11, 0.83]
+            ]
+
+        , "Lumi" : 37000
+    }
+
+    , "ModelVars" : {
+        "sigma0" : {
+            "InitialValue" : 1.05
+            , "Prior" : "Flat"
+            , "Variation" : {
+                "Sig" : [1, 0, 0, 0]
+            }
+        }
+
+        , "sigma1" : {
+            "InitialValue" : 0.1
+            , "Prior" : "Flat"
+            , "Variation" : {
+                "Sig" : [0, 1, 0, 0]
+            }
+        }
+
+        , "sigma2" : {
+            "InitialValue" : 0.01
+            , "Prior" : "Flat"
+            , "Variation" : {
+                "Sig" : [0, 0, 1, 0]
+            }
+        }
+
+        , "sigma3" : {
+            "InitialValue" : 0.003
+            , "Prior" : "Flat"
+            , "Variation" : {
+                "Sig" : [0, 0, 0, 1]
+            }
+        }
+
+        , "lumi" : {
+            "InitialValue" : 0
+            , "Prior" : { "Normal" : {"Mu" : 0, "Sigma" : 0.1} }
+            , "Variation" : {
+                "Lumi" : 74000
+            }
+        }
+
+        , "ttbarnorm" : {
+            "InitialValue" : 0
+            , "Prior" : { "Normal" : {"Mu" : 0, "Sigma" : 0.2} }
+            , "Variation" : {
+                "Bkgs" : { "ttbar" : [3.9e-2, 1.676e-3, 3.7e-4, 0.0] }
+            }
+        }
+    }
+}
