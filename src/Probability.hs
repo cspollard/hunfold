@@ -12,11 +12,11 @@ module Probability
   , logNormalP, logLogNormalP, logPoissonP
   , standard, normal, exponential, truncatedExp
   , gamma, chiSquare, bernoulli, dirichlet
-
   , T(..)
   ) where
 
 import           Control.Monad.Primitive       as X (PrimMonad, PrimState)
+import           Data.Monoid                   (Sum (..), (<>))
 import           Data.Number.Erf               as X
 import           Data.Traversable              (mapAccumL)
 import           System.Random.MWC             as X (Gen, asGenIO,
@@ -155,5 +155,6 @@ dirichlet as = do
   zs <- traverse (`gamma` 1) as
   return $ zs `normTo` 1
 
+-- use Sum here to avoid mixups
 normTo :: (Fractional a, Traversable f) => f a -> a -> f a
-normTo xs y = let (s, xs') = mapAccumL (\sofar x -> (x+sofar, x*y/s)) 0 xs in xs'
+normTo xs y = let (Sum s, xs') = mapAccumL (\sofar x -> (Sum x <> sofar, x*y/s)) 0 xs in xs'
