@@ -192,7 +192,7 @@ mergeLumi x l = (x *) . flip (-) l
 
 
 appVar :: Num a => ModelVar a -> a -> Model a -> Either String (Model a)
-appVar ModelVar{..} x Model{..} = toEither "appVar failed" $
+appVar ModelVar{..} x Model{..} = toEither "failed to apply model variation." $
   join $ reifyVectorNat _mSig
     $ \(sig :: V n a) -> reifyMatrix1 _mMig
       $ \(mig :: M n m a) -> do
