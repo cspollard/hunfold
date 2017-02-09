@@ -145,12 +145,6 @@ main = do
       putStrLn "log-likelihood of starting params:"
       print $ logLH start'
       putStrLn ""
-      putStrLn "data prediction given starting params:"
-      print . toError $ prediction =<< appVars variations start' model
-      putStrLn ""
-      putStrLn "actual data:"
-      print dataH
-      putStrLn ""
 
       -- invert hessian -> covariance matrix
       -- then find the transform from canonical variables
@@ -161,6 +155,14 @@ main = do
           it = toError $ invM t
           transform' v = (t !* v) ^+^ start'
           invtransform' v' = it !* (v' ^-^ start')
+          predstart = toError $ prediction =<< appVars variations start' model
+
+      putStrLn "prediction given starting params:"
+      print predstart
+      putStrLn ""
+      putStrLn "actual data:"
+      print dataH
+      putStrLn ""
 
       putStrLn "hessian matrix:"
       print . fst $ toMatrix hess'
@@ -192,16 +194,24 @@ main = do
 
       -- write the walk locations to file.
       withFile outfile WriteMode $ \f -> do
+        let binnames = iover traversed (\i _ -> "bin" <> T.pack (show i)) predstart
+
         hPutStrLn f . mconcat . intersperse ", " . fmap T.unpack
-          $ "llh" : V.toList mpnames
+          $ "llh" : V.toList mpnames ++ V.toList binnames
 
         LT.runListT . LT.take nsamps $ do
           Chain{..} <- walk
           LT.liftIO $ do
             hPutStr f $ show chainScore ++ ", "
+            -- TODO
+            -- this is very wasteful: we are already getting prediction
+            -- to calculate the log likelihood...
+            let theseparams = transform' chainPosition
+                thispred =
+                  toError $ prediction =<< appVars variations theseparams model
             hPutStrLn f
               . mconcat . intersperse ", " . V.toList
-              $ show <$> transform' chainPosition
+              $ show <$> (theseparams V.++ thispred)
 
 
 everyLT :: Monad m => Int -> (a -> m ()) -> ListT m a -> ListT m a
