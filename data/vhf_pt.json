@@ -20,7 +20,7 @@
     }
 
     , "ModelVars" : {
-        "sigma0" : {
+        "truthbin0" : {
             "InitialValue" : 1.05
             , "Prior" : "Flat"
             , "Variation" : {
@@ -28,7 +28,7 @@
             }
         }
 
-        , "sigma1" : {
+        , "truthbin1" : {
             "InitialValue" : 0.1
             , "Prior" : "Flat"
             , "Variation" : {
@@ -36,7 +36,7 @@
             }
         }
 
-        , "sigma2" : {
+        , "truthbin2" : {
             "InitialValue" : 0.01
             , "Prior" : "Flat"
             , "Variation" : {
@@ -44,7 +44,7 @@
             }
         }
 
-        , "sigma3" : {
+        , "truthbin3" : {
             "InitialValue" : 0.003
             , "Prior" : "Flat"
             , "Variation" : {

@@ -194,7 +194,7 @@ main = do
 
       -- write the walk locations to file.
       withFile outfile WriteMode $ \f -> do
-        let binnames = iover traversed (\i _ -> "bin" <> T.pack (show i)) predstart
+        let binnames = iover traversed (\i _ -> "recobin" <> T.pack (show i)) predstart
 
         hPutStrLn f . mconcat . intersperse ", " . fmap T.unpack
           $ "llh" : V.toList mpnames ++ V.toList binnames

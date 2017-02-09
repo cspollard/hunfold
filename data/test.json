@@ -34,7 +34,7 @@
             }
         }
 
-        , "sigma0" : {
+        , "truthbin0" : {
             "InitialValue" : 10
             , "Prior" : "Flat"
             , "Variation" : {
@@ -42,7 +42,7 @@
             }
         }
 
-        , "sigma1" : {
+        , "truthbin1" : {
             "InitialValue" : 5
             , "Prior" : "Flat"
             , "Variation" : {
@@ -50,7 +50,7 @@
             }
         }
 
-        , "sigma2" : {
+        , "truthbin2" : {
             "InitialValue" : 2.5
             , "Prior" : "Flat"
             , "Variation" : {
