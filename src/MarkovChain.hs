@@ -19,4 +19,4 @@ runMC :: PrimMonad m
       => Transition m a -> a -> Gen (PrimState m) -> ListT m a
 runMC t s g = ListT $ do
   s' <- sample (execStateT t s) g
-  return . Cons s' $ runMC t s' g
+  return . Cons s $ runMC t s' g

@@ -188,9 +188,17 @@ main = do
               (invtransform' start')
               Nothing
 
-          trans = metropolis (1 / fromIntegral nskip)
+          -- optimal metropolis size taken from
+          -- Gelman et al. (1996)
+          -- ... this seems more optimal...
+          sig = 2.38 / (sqrt . fromIntegral . length $ start')
+          trans = metropolis sig
+
           walk = takeEvery nskip . LT.drop nburn $ runMC trans c g
 
+      putStrLn ""
+      putStrLn "metropolis step size:"
+      print sig
 
       -- write the walk locations to file.
       withFile outfile WriteMode $ \f -> do
