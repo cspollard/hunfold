@@ -64,4 +64,4 @@ executable run-hunfold
   hs-source-dirs:      app/
   default-language:    Haskell2010
   ghc-options:         -Wall -fwarn-monomorphism-restriction -fwarn-incomplete-record-updates -fwarn-unused-do-bind
-  ghc-prof-options:    -Wall -fwarn-monomorphism-restriction -fwarn-incomplete-record-updates -fwarn-unused-do-bind -O0 -fprof-auto -caf-all -rtsopts
+  ghc-prof-options:    -Wall -fwarn-monomorphism-restriction -fwarn-incomplete-record-updates -fwarn-unused-do-bind -fprof-auto -caf-all -rtsopts

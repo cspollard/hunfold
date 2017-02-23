@@ -30,6 +30,8 @@ lnsqrt2pi
     => a
 lnsqrt2pi =
     0.9189385332046727417803297364056176398613974736377834128171
+{-# INLINABLE lnsqrt2pi #-}
+{-# SPECIALIZE lnsqrt2pi :: Double #-}
 
 
 logNormalP
@@ -38,6 +40,9 @@ logNormalP
 logNormalP m s x =
     let e = negate . (/ 2) . raising 2 $ (x - m) / s
     in e - log s - lnsqrt2pi
+{-# INLINABLE logNormalP #-}
+{-# SPECIALIZE logNormalP :: Double -> Double -> Double -> Double #-}
+
 
 logLogNormalP
     :: Floating a
@@ -46,6 +51,8 @@ logLogNormalP m s x =
     let x' = log x
         e = negate . (/ 2) . raising 2 $ (x' - m) / s
     in e - log s - x' - lnsqrt2pi
+{-# INLINABLE logLogNormalP #-}
+{-# SPECIALIZE logLogNormalP :: Double -> Double -> Double -> Double #-}
 
 logPoissonP
     :: (Integral a, Floating b, Ord b)
@@ -53,6 +60,9 @@ logPoissonP
 logPoissonP k l
   | k < 0 = error "logPoissonP: negative counts"
   | otherwise = fromIntegral k * log l - l - logFactorial k
+{-# INLINABLE logPoissonP #-}
+{-# SPECIALIZE logPoissonP :: Integral a => a -> Double -> Double #-}
+{-# SPECIALIZE logPoissonP :: Int -> Double -> Double #-}
 
 logFactorial
     :: (Integral a, Floating b)
@@ -70,9 +80,15 @@ logFactorial k
     factorial 0 = 1
     factorial 1 = 1
     factorial n = n * factorial (n - 1)
+{-# INLINABLE logFactorial #-}
+{-# SPECIALIZE logFactorial :: Integral a => a -> Double #-}
+{-# SPECIALIZE logFactorial :: Int -> Double #-}
 
 raising :: Num a => Int -> a -> a
 raising y x = x ^ y
+{-# INLINABLE raising #-}
+{-# SPECIALIZE raising :: Int -> Double -> Double #-}
+
 
 -- strict 2-tuple
 data T a b =
@@ -113,6 +129,8 @@ pkgError func msg = error $ "System.Random.MWC.Distributions." ++ func ++
 
 sqr :: Num a => a -> a
 sqr x = x*x
+{-# INLINABLE sqr #-}
+{-# SPECIALIZE sqr :: Double -> Double #-}
 
 gamma :: (Variate a, PrimMonad m, InvErf a, Ord a) => a -> a -> Prob m a
 gamma a b
