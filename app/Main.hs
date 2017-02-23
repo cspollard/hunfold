@@ -156,6 +156,7 @@ main = do
           transform' v = (t !* v) ^+^ start'
           invtransform' v' = it !* (v' ^-^ start')
           predstart = toError $ prediction =<< appVars variations start' model
+          rref' = toError $ inM rref hess'
 
       putStrLn "prediction given starting params:"
       print predstart
@@ -166,6 +167,9 @@ main = do
 
       putStrLn "hessian matrix:"
       print . fst $ toMatrix hess'
+      putStrLn ""
+      putStrLn "hessian matrix (rref):"
+      print . fst $ toMatrix rref'
       putStrLn ""
       putStrLn "covariance matrix:"
       print . fst $ toMatrix cov
