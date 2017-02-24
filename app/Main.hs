@@ -179,7 +179,11 @@ main = do
 
       when
         (anyOf (traverse.traverse) isNaN t)
-        $ error "we have NaNs in the transformation matrix; exiting."
+        . error
+          $ "we have NaNs in the transformation matrix."
+            ++ "\nthis might mean the hessian matrix is singular"
+            ++ "\n(e.g. you may need more constraints in your model)."
+            ++ "\nexiting."
 
       -- need an RNG...
       g <- createSystemRandom
