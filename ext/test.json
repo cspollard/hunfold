@@ -1,0 +1,25 @@
+{
+    "data" :
+        { "file" : "data/Merged_ttbar.root"
+        , "hist" : "hist_hadtop_pt_varbin_largerbin"
+        }
+
+    , "nominal" :
+        { "normedToLumi" : true
+        , "lumi" : 5000
+        , "backgrounds" :
+            { "ttbar" :
+                { "file" : "data/Merged_ttbar.root"
+                , "hist" : "hist_hadtop_pt_varbin_largerbin"
+                }
+            }
+        , "migration" :
+            { "file" : "data/Merged_ttbar.root"
+            , "hist" : "hist_matrix_hadtopjet_truthhadtopjet_pt_varbin_largerbin"
+            , "normed" : false
+            }
+        }
+
+    , "variations" :
+    { }
+}
