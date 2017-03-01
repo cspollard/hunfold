@@ -11,14 +11,15 @@ def main(args):
     d = json.load(fjson)
     fjson.close()
 
+    # get the data info
     print "loading data hist"; stdout.flush()
     datafile = ROOT.TFile.Open(d["data"]["file"])
     datahist = datafile.Get(d["data"]["hist"])
     dout["Data"] = th1ToList(datahist)
 
+    # get the info for the nominal model
     print "loading nominal model"; stdout.flush()
     dnom = d["nominal"]
-    normedToLumi = dnom.get("normedToLumi", False)
     lumi = float(dnom["lumi"])
 
     dout["Nominal"] = { "Lumi" : lumi, "Bkgs" : {} }
@@ -28,10 +29,7 @@ def main(args):
     for (tbkg, dbkg) in dbkgs.iteritems():
         f = ROOT.TFile(dbkg["file"])
         h = f.Get(dbkg["hist"])
-        if normedToLumi:
-            h.Scale(1.0/lumi)
-        else:
-            pass
+        h.Scale(1.0/lumi)
         dout["Nominal"]["Bkgs"][tbkg] = th1ToList(h)
         continue
 
@@ -39,6 +37,17 @@ def main(args):
     mig = th2ToList(fmig.Get(dnom["migration"]["hist"]))
     dout["Nominal"]["Mig"] = mig
     dout["Nominal"]["Sig"] = map(lambda x: 0, mig)
+
+    # get the info for the variations
+    dout["ModelVars"] = {}
+    dvars = d["variations"]
+
+
+    for (tvar, dvar) in dvars.iteritems():
+        dtmp = {}
+        if
+
+
 
     print json.dumps(dout); stdout.flush()
 

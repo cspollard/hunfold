@@ -198,7 +198,6 @@ main = do
 
           -- optimal metropolis size taken from
           -- Gelman et al. (1996)
-          -- ... this seems more optimal...
           sig = 2.38 / (sqrt . fromIntegral . length $ start')
           trans = metropolis sig
 
