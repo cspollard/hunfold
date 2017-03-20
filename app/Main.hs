@@ -59,6 +59,19 @@ main = do
     Right (dataH, model, modelparams)
       -> runModel nsamps outfile dataH model modelparams
 
+
+parseModel
+  :: (FromJSON a, FromJSON b)
+  => Value -> Parser (Vector b, Model a, Map Text (ModelParam a))
+parseModel = withObject "error: parseModel was not given a json object" $
+  \o -> do
+    d <- o .: "Data"
+    m <- o .: "Nominal"
+    mps <- o .: "ModelVars"
+
+    return (d, m, mps)
+
+
 -- everyLT :: Monad m => Int -> (a -> m ()) -> ListT m a -> ListT m a
 -- everyLT n f = go 0
 --   where
@@ -89,15 +102,3 @@ main = do
 --         then next $ dropWhileL f l'
 --         else return c
 --     Nil -> return Nil
-
-
-parseModel
-  :: (FromJSON a, FromJSON b)
-  => Value -> Parser (Vector b, Model a, Map Text (ModelParam a))
-parseModel = withObject "error: parseModel was not given a json object" $
-  \o -> do
-    d <- o .: "Data"
-    m <- o .: "Nominal"
-    mps <- o .: "ModelVars"
-
-    return (d, m, mps)
