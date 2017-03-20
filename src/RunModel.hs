@@ -21,7 +21,9 @@ import           Matrix
 import           Model
 import           Numeric.AD
 import           Numeric.MCMC
-import           System.IO        (IOMode (..), hPutStr, hPutStrLn, withFile)
+import           System.IO        (BufferMode (..), IOMode (..), hFlush,
+                                   hPutStr, hPutStrLn, hSetBuffering, stdout,
+                                   withFile)
 
 toError :: Either String c -> c
 toError = either error id
@@ -56,8 +58,10 @@ runModel nsamps outfile dataH model modelparams = do
 
   putStrLn ""
 
+  -- TODO
+  -- what is best value?!
   -- find the maximum likelihood starting location
-  let xs = take 1000 $ conjugateGradientAscent logLH start
+  let xs = take (length start) $ conjugateGradientAscent logLH start
       x = last xs
 
   start' <-
@@ -145,9 +149,11 @@ runModel nsamps outfile dataH model modelparams = do
   putStrLn ""
   putStrLn "metropolis step size:"
   print sig
+  hFlush stdout
 
   -- write the walk locations to file.
   withFile outfile WriteMode $ \f -> do
+    hSetBuffering f LineBuffering
     let binnames = iover traversed (\i _ -> "recobin" <> T.pack (show i)) predstart
 
     hPutStrLn f . mconcat . intersperse ", " . fmap T.unpack

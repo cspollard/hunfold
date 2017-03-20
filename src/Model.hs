@@ -42,6 +42,9 @@ import Control.Applicative ((<|>))
 import Probability
 import Matrix
 
+-- TODO
+-- TODO!
+-- update this to work with Vars from atlas.git!!
 data Model a =
   Model
     { _mBkgs :: Map Text (Vector a)

@@ -8,6 +8,7 @@ import           Data.Aeson
 import           Data.Aeson.Types     (Parser, parseEither)
 import qualified Data.ByteString.Lazy as BS
 import           Data.Map.Strict      (Map)
+import           Data.Monoid          ((<>))
 import           Data.Text            (Text)
 import           Data.Vector          (Vector)
 import           Model
@@ -15,7 +16,6 @@ import           Options.Applicative  hiding (Parser, auto)
 import qualified Options.Applicative  as OA
 import           RunModel
 import           System.IO            (BufferMode (..), hSetBuffering, stdout)
-import Data.Monoid ((<>))
 
 data InArgs =
   InArgs
