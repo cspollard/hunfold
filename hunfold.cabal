@@ -21,6 +21,7 @@ library
                      , Probability
                      , InMatrix
                      , Model
+                     , RunModel
 
   build-depends:       base == 4.9.*
                      , primitive == 0.6.*
@@ -37,6 +38,8 @@ library
                      , aeson == 0.11.*
                      , text == 1.2.*
                      , containers == 0.5.*
+                     , ad == 4.3.*
+                     , declarative == 0.2.*
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:         -Wall -fwarn-monomorphism-restriction -fwarn-incomplete-record-updates -fwarn-unused-do-bind
@@ -55,8 +58,6 @@ executable run-hunfold
                      , optparse-applicative == 0.12.*
                      , vector == 0.11.*
                      , bytestring == 0.10.*
-                     , declarative == 0.2.*
-                     , ad == 4.3.*
                      , aeson == 0.11.*
                      , text == 1.2.*
                      , containers == 0.5.*
