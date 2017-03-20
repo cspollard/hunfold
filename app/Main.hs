@@ -15,6 +15,7 @@ import           Options.Applicative  hiding (Parser, auto)
 import qualified Options.Applicative  as OA
 import           RunModel
 import           System.IO            (BufferMode (..), hSetBuffering, stdout)
+import Data.Monoid ((<>))
 
 data InArgs =
   InArgs

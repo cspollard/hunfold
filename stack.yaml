@@ -4,4 +4,4 @@ packages:
 - '.'
 extra-deps:
 - list-transformer-1.0.1
-resolver: lts-7.13
+resolver: lts-8.0
