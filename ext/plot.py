@@ -45,12 +45,12 @@ for i in range(len(names)):
     plt.close()
 
     if name.startswith("recobin"):
-        recobinx.append(len(recobinx)+1)
+        recobinx.append(float(name[7:]))
         recobiny.append(med)
         recobinerr.append((med-q16, q84-med))
 
     elif name.startswith("truthbin"):
-        truthbinx.append(len(truthbinx)+1)
+        truthbinx.append(float(name[8:]))
         truthbiny.append(med)
         truthbinerr.append((med-q16, q84-med))
 
