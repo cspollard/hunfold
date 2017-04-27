@@ -71,35 +71,3 @@ parseModel = withObject "error: parseModel was not given a json object" $
     mps <- o .: "ModelVars"
 
     return (d, m, mps)
-
-
--- everyLT :: Monad m => Int -> (a -> m ()) -> ListT m a -> ListT m a
--- everyLT n f = go 0
---   where
---     go m ll = ListT $ do
---       c <- next ll
---       case c of
---         Cons x lll ->
---           if m >= n
---             then f x >> (return . Cons x $ go 0 lll)
---             else return . Cons x $ go (m+1) lll
---         Nil -> return Nil
---
---
--- takeEvery :: Monad m => Int -> ListT m a -> ListT m a
--- takeEvery n l = ListT $ do
---   c <- next $ LT.drop (n-1) l
---   case c of
---     Cons x l' -> return . Cons x $ takeEvery n l'
---     Nil       -> return Nil
---
---
--- dropWhileL :: Monad m => (a -> Bool) -> ListT m a -> ListT m a
--- dropWhileL f l = ListT $ do
---   c <- next l
---   case c of
---     Cons x l' ->
---       if f x
---         then next $ dropWhileL f l'
---         else return c
---     Nil -> return Nil
