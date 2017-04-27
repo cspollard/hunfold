@@ -14,7 +14,11 @@ import           System.Random.MWC             as X (Gen, asGenIO,
 import           System.Random.MWC.Probability
 
 markovChain :: Monad m => (t -> m t) -> t -> Producer t m r
-markovChain f = P.unfoldr $ \x -> Right <$> (fmap dup . f) x
+markovChain step start = do
+  -- if we don't yield the starting location it's not part of the chain!
+  yield start
+  P.unfoldr (\x -> Right <$> (fmap dup . step) x) start
+
   where dup x = (x, x)
 
 
