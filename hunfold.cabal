@@ -22,6 +22,7 @@ library
                      , InMatrix
                      , Model
                      , RunModel
+                     , NDSL
 
   build-depends:       base == 4.9.*
                      , primitive == 0.6.*
@@ -36,6 +37,7 @@ library
                      , vector == 0.11.*
                      , aeson == 1.0.*
                      , text == 1.2.*
+                     , free == 4.12.4
                      , containers == 0.5.*
                      , ad == 4.3.*
   hs-source-dirs:      src

@@ -39,8 +39,12 @@ metropolisStep
   -> Prob m (t, Double)
 metropolisStep proposal logLH (currloc, currllh) = do
   nextloc <- proposal currloc
-  let nextllh = logLH nextloc
+  let nextllh = whenNaN negInf $ logLH nextloc
   accept <- bernoulli . exp . min 0 $ nextllh - currllh
   if accept
     then return (nextloc, nextllh)
     else return (currloc, currllh)
+
+  where
+    negInf = negate $ 1 / 0
+    whenNaN x y = if x == 0/0 then y else x

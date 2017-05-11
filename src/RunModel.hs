@@ -17,6 +17,7 @@ import           Linear.Matrix
 import           MarkovChain
 import           Matrix
 import           Model
+import           NDSL
 import           Numeric.AD
 import           Pipes
 import qualified Pipes.Prelude                 as P
@@ -41,10 +42,8 @@ runModel nsamps outfile dataH model modelparams = do
       priors = fmap _mpPrior mps
       variations = fmap _mpVariation mps
 
-      -- I'm not sure why we need an explicit type here.
-      -- probably because of the RankNType going on here
       logLH
-        :: forall c. (Floating c, Ord c, Mode c, Scalar c ~ Double)
+        :: forall c. (Floating c, Mode c, Scalar c ~ Double)
         => V.Vector c -> c
       logLH =
         toError
@@ -57,6 +56,9 @@ runModel nsamps outfile dataH model modelparams = do
       gLogLH = grad logLH
 
   putStrLn ""
+
+  putStrLn "likelihood:"
+  print . logLH $ V.imap (\i _ -> var (show i) :: NDSL Double) start
 
   -- TODO
   -- what is best value?!
