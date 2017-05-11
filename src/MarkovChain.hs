@@ -47,4 +47,4 @@ metropolisStep proposal logLH (currloc, currllh) = do
 
   where
     negInf = negate $ 1 / 0
-    whenNaN x y = if x == 0/0 then y else x
+    whenNaN x y = if isNaN y then x else y
