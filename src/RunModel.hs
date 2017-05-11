@@ -58,7 +58,7 @@ runModel nsamps outfile dataH model modelparams = do
   putStrLn ""
 
   putStrLn "likelihood:"
-  print . logLH $ V.imap (\i _ -> var (show i) :: NDSL Double) start
+  print . logLH $ fmap (var . T.unpack) mpnames
 
   -- TODO
   -- what is best value?!
