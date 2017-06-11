@@ -27,8 +27,6 @@ import           Linear.V     as X
 
 type M (n :: Nat) (m :: Nat) a = V n (V m a)
 
-instance KnownNat n => Trace (V n)
-
 fromVectorM :: (Dim n, Dim m) => Vector (Vector a) -> Maybe (M n m a)
 fromVectorM m = do
   vs <- traverse fromVector m
