@@ -1,29 +1,30 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies        #-}
 
 module RunModel where
 
 import           Control.Lens
-import           Control.Monad    (when)
-import           Data.List        (intersperse)
-import qualified Data.Map.Strict  as M
-import           Data.Monoid      ((<>))
-import qualified Data.Text        as T
-import qualified Data.Vector      as V
-import           InMatrix         hiding (transpose, zero)
+import           Control.Monad                 (when)
+import           Data.List                     (intersperse)
+import qualified Data.Map.Strict               as M
+import           Data.Monoid                   ((<>))
+import qualified Data.Text                     as T
+import qualified Data.Vector                   as V
+import           InMatrix                      hiding (transpose, zero)
 import           Linear.Matrix
-import qualified List.Transformer as LT
 import           MarkovChain
 import           Matrix
 import           Model
+import           NDSL
 import           Numeric.AD
-import           Numeric.MCMC
-import           System.IO        (BufferMode (..), IOMode (..), hFlush,
-                                   hPutStr, hPutStrLn, hSetBuffering, stdout,
-                                   withFile)
+import           Pipes
+import qualified Pipes.Prelude                 as P
+import           System.IO                     (BufferMode (..), IOMode (..),
+                                                hFlush, hPutStrLn,
+                                                hSetBuffering, stdout, withFile)
+import           System.Random.MWC.Probability
 
 toError :: Either String c -> c
 toError = either error id
@@ -41,10 +42,8 @@ runModel nsamps outfile dataH model modelparams = do
       priors = fmap _mpPrior mps
       variations = fmap _mpVariation mps
 
-      -- I'm not sure why we need an explicit type here.
-      -- probably because of the RankNType going on here
       logLH
-        :: forall c. (Floating c, Ord c, Mode c, Scalar c ~ Double)
+        :: forall c. (Floating c, Mode c, Scalar c ~ Double)
         => V.Vector c -> c
       logLH =
         toError
@@ -57,6 +56,9 @@ runModel nsamps outfile dataH model modelparams = do
       gLogLH = grad logLH
 
   putStrLn ""
+
+  putStrLn "likelihood:"
+  print . logLH $ fmap (var . T.unpack) mpnames
 
   -- TODO
   -- what is best value?!
@@ -131,20 +133,16 @@ runModel nsamps outfile dataH model modelparams = do
   -- need an RNG...
   g <- createSystemRandom
 
-  -- finally, build the chain, metropolis transition, and the MCMC walk
-  let c =
-        Chain
-          (Target (logLH . transform') $ Just (gLogLH . transform'))
-          (logLH start')
-          (invtransform' start')
-          Nothing
+  let chain :: PrimMonad m => Producer (V.Vector Double, Double) (Prob m) ()
+      chain =
+        metropolis
+          (traverse (`normal` sig))
+          (logLH . transform')
+          (invtransform' start', logLH start')
 
       -- optimal metropolis size taken from
       -- Gelman et al. (1996)
       sig = 2.38 / (sqrt . fromIntegral . length $ start')
-      trans = metropolis sig
-
-      walk = runMC trans c g
 
   putStrLn ""
   putStrLn "metropolis step size:"
@@ -154,21 +152,20 @@ runModel nsamps outfile dataH model modelparams = do
   -- write the walk locations to file.
   withFile outfile WriteMode $ \f -> do
     hSetBuffering f LineBuffering
+
     let binnames = iover traversed (\i _ -> "recobin" <> T.pack (show i)) predstart
+        showMC (ps, llh) =
+          let theseparams = transform' ps
+              thispred =
+                toError $ prediction =<< appVars variations theseparams model
+          in
+            mconcat . intersperse ", " . V.toList
+            $ show <$> V.cons llh theseparams V.++ thispred
 
     hPutStrLn f . mconcat . intersperse ", " . fmap T.unpack
       $ "llh" : V.toList mpnames ++ V.toList binnames
 
-    LT.runListT . LT.take nsamps $ do
-      Chain{..} <- walk
-      LT.liftIO $ do
-        hPutStr f $ show chainScore ++ ", "
-        -- TODO
-        -- this is very wasteful: we are already getting prediction
-        -- to calculate the log likelihood...
-        let theseparams = transform' chainPosition
-            thispred =
-              toError $ prediction =<< appVars variations theseparams model
-        hPutStrLn f
-          . mconcat . intersperse ", " . V.toList
-          $ show <$> (theseparams V.++ thispred)
+    let effect :: (PrimMonad m, MonadIO m) => Effect (Prob m) ()
+        effect = chain >-> P.take nsamps >-> P.map showMC >-> P.toHandle f
+
+    sample (runEffect effect) g

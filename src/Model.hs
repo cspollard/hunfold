@@ -120,7 +120,7 @@ instance FromJSON a => FromJSON (ModelParam a) where
 
 
 modelLogPosterior
-  :: (Floating a, Ord a, Integral b)
+  :: (Floating a, Integral b)
   => Vector b
   -> Model a
   -> Vector (ModelVar a)
@@ -160,7 +160,7 @@ prediction Model{..} =
 
 
 modelLogLikelihood
-  :: (Integral b, Floating a, Ord a)
+  :: (Integral b, Floating a)
   => Vector b -> Model a -> Maybe a
 modelLogLikelihood dats Model{..} =
   join $ reifyVectorNat _mSig
