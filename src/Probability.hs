@@ -9,7 +9,7 @@
 
 module Probability
   ( module X
-  , logNormalP, logLogNormalP, logPoissonP
+  , logNormalP, logLogNormalP, logPoissonP, logMultinomialP
   , standard, normal, exponential, truncatedExp
   , gamma, chiSquare, bernoulli, dirichlet
   , T(..)
@@ -86,6 +86,13 @@ raising :: Num a => Int -> a -> a
 raising y x = x ^ y
 {-# INLINABLE raising #-}
 {-# SPECIALIZE raising :: Int -> Double -> Double #-}
+
+
+logMultinomialP :: (Integral a, Floating b) => [a] -> [b] -> b
+logMultinomialP xs ps =
+  logFactorial (sum xs)
+  - sum (logFactorial <$> xs)
+  + sum (zipWith (\p x -> fromIntegral x * log p) ps xs)
 
 
 -- strict 2-tuple
