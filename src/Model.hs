@@ -1,15 +1,15 @@
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE NoMonomorphismRestriction  #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE RecordWildCards            #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
 
 
 module Model
@@ -28,29 +28,29 @@ module Model
   , prediction
   ) where
 
-import Control.Lens
-import GHC.TypeLits
-import Control.Monad (join, foldM)
-import GHC.Generics
-import Data.Map (Map)
-import Data.Vector (Vector)
-import Data.Text (Text)
-import Data.Aeson
-import Data.Aeson.Types
-import Control.Applicative ((<|>))
+import           Control.Applicative ((<|>))
+import           Control.Lens
+import           Control.Monad       (foldM, join)
+import           Data.Aeson
+import           Data.Aeson.Types
+import           Data.HashMap.Strict
+import           Data.Text           (Text)
+import           Data.Vector         (Vector)
+import           GHC.Generics
+import           GHC.TypeLits
 
-import Probability
-import Matrix
+import           Matrix
+import           Probability
 
 -- TODO
 -- TODO!
 -- update this to work with Vars from atlas.git!!
 data Model a =
   Model
-    { _mBkgs :: Map Text (Vector a)
-    , _mSig:: Vector a
-    , _mMig:: Vector (Vector a)
-    , _mLumi  :: a
+    { _mBkgs :: HashMap Text (Vector a)
+    , _mSig  :: Vector a
+    , _mMig  :: Vector (Vector a)
+    , _mLumi :: a
     } deriving (Show, Generic, Functor)
 
 makeLenses ''Model
@@ -68,10 +68,10 @@ addM (Model b s m l) (Model b' s' m' l') =
 
 data ModelVar a =
   ModelVar
-    { _mvBkgs :: Maybe (Map Text (Vector a))
-    , _mvSig:: Maybe (Vector a)
-    , _mvMig:: Maybe (Vector (Vector a))
-    , _mvLumi  :: Maybe a
+    { _mvBkgs :: Maybe (HashMap Text (Vector a))
+    , _mvSig  :: Maybe (Vector a)
+    , _mvMig  :: Maybe (Vector (Vector a))
+    , _mvLumi :: Maybe a
     } deriving (Show, Generic, Functor)
 
 makeLenses ''ModelVar
@@ -101,8 +101,8 @@ instance FromJSON a => FromJSON (ParamPrior a) where
 
 
 ppToFunc :: Floating a => ParamPrior a -> (a -> a)
-ppToFunc Flat = const 0
-ppToFunc (Normal m s) = logNormalP m s
+ppToFunc Flat            = const 0
+ppToFunc (Normal m s)    = logNormalP m s
 ppToFunc (LogNormal m s) = logLogNormalP m s
 
 
@@ -142,7 +142,7 @@ modelLogPosterior dats model mps logPriors ps =
 
 prediction'
   :: (KnownNat n, KnownNat m, Num a)
-  => Map Text (V m a) -> V n a -> M n m a -> a -> V m a
+  => HashMap Text (V m a) -> V n a -> M n m a -> a -> V m a
 prediction' bkgs sig mig lumi =
   let bkgtot = foldl (^+^) zero bkgs
       sigtot = sig *! mig
@@ -178,7 +178,9 @@ appVars mvs ps m = foldM (fmap . addM) m ms
   where ms = ($ m) <$> liftI2 appVar mvs ps
 
 
-mergeBkgs :: (KnownNat n, Num a) => a -> Map Text (V n a) -> Map Text (V n a) -> Map Text (V n a)
+mergeBkgs
+  :: (KnownNat n, Num a)
+  => a -> HashMap Text (V n a) -> HashMap Text (V n a) -> HashMap Text (V n a)
 mergeBkgs x b = fmap (x *^) . liftU2 (^-^) b
 
 
@@ -186,7 +188,9 @@ mergeSig :: (KnownNat n, Num a) => a -> V n a -> V n a -> V n a
 mergeSig x s = (x *^) . (^-^ s)
 
 
-mergeMig :: (KnownNat n, KnownNat m, Num a) => a -> M n m a -> M n m a -> M n m a
+mergeMig
+  :: (KnownNat n, KnownNat m, Num a)
+  => a -> M n m a -> M n m a -> M n m a
 mergeMig x m = (x *!!) . (!-! m)
 
 
@@ -200,7 +204,7 @@ appVar ModelVar{..} x Model{..} = toEither "failed to apply model variation." $
     $ \(sig :: V n a) -> reifyMatrix1 _mMig
       $ \(mig :: M n m a) -> do
 
-        (bkgs :: Map Text (V m a)) <- traverse fromVector _mBkgs
+        (bkgs :: HashMap Text (V m a)) <- traverse fromVector _mBkgs
 
         -- this is a bit tricky
         -- it is Nothing if the vector conversion failed.

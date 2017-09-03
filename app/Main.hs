@@ -7,7 +7,7 @@ module Main where
 import           Data.Aeson
 import           Data.Aeson.Types     (Parser, parseEither)
 import qualified Data.ByteString.Lazy as BS
-import           Data.Map.Strict      (Map)
+import           Data.HashMap.Strict  (HashMap)
 import           Data.Monoid          ((<>))
 import           Data.Text            (Text)
 import           Data.Vector          (Vector)
@@ -63,7 +63,7 @@ main = do
 
 parseModel
   :: (FromJSON a, FromJSON b)
-  => Value -> Parser (Vector b, Model a, Map Text (ModelParam a))
+  => Value -> Parser (Vector b, Model a, HashMap Text (ModelParam a))
 parseModel = withObject "error: parseModel was not given a json object" $
   \o -> do
     d <- o .: "Data"

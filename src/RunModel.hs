@@ -7,8 +7,8 @@ module RunModel where
 
 import           Control.Lens
 import           Control.Monad                 (when)
+import qualified Data.HashMap.Strict           as M
 import           Data.List                     (intersperse)
-import qualified Data.Map.Strict               as M
 import           Data.Monoid                   ((<>))
 import qualified Data.Text                     as T
 import qualified Data.Vector                   as V
@@ -17,7 +17,6 @@ import           Linear.Matrix
 import           MarkovChain
 import           Matrix
 import           Model
-import           NDSL
 import           Numeric.AD
 import           Pipes
 import qualified Pipes.Prelude                 as P
@@ -34,7 +33,7 @@ runModel
   -> String
   -> V.Vector Int
   -> Model Double
-  -> M.Map T.Text (ModelParam Double)
+  -> M.HashMap T.Text (ModelParam Double)
   -> IO ()
 runModel nsamps outfile dataH model modelparams = do
   let (mpnames, mps) = V.unzip . V.fromList $ M.toList modelparams
