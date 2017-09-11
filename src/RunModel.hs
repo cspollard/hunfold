@@ -1,7 +1,11 @@
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE BangPatterns              #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedStrings         #-}
+{-# LANGUAGE RankNTypes                #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TypeFamilies              #-}
 
 module RunModel where
 
@@ -10,14 +14,17 @@ import           Control.Monad                 (when)
 import qualified Data.HashMap.Strict           as M
 import           Data.List                     (intersperse)
 import           Data.Monoid                   ((<>))
+import           Data.Reflection               (Reifies)
 import qualified Data.Text                     as T
 import qualified Data.Vector                   as V
-import           InMatrix                      hiding (transpose, zero)
-import           Linear.Matrix
+import           InMatrix                      hiding (trace, transpose, zero)
+import           Linear.Matrix                 hiding (trace)
 import           MarkovChain
-import           Matrix
+import           Matrix                        hiding (trace)
 import           Model
 import           Numeric.AD
+import           Numeric.AD.Internal.Reverse   (Reverse, Tape)
+import           Numeric.AD.Mode.Reverse       as Reverse (gradWith')
 import           Pipes
 import qualified Pipes.Prelude                 as P
 import           System.IO                     (BufferMode (..), IOMode (..),
@@ -35,11 +42,13 @@ runModel
   -> Model Double
   -> M.HashMap T.Text (ModelParam Double)
   -> IO ()
-runModel nsamps outfile dataH model modelparams = do
+runModel nsamps outfile dataH model' modelparams = do
   let (mpnames, mps) = V.unzip . V.fromList $ M.toList modelparams
-      start = fmap _mpInitialValue mps
-      priors = fmap _mpPrior mps
-      variations = fmap _mpVariation mps
+      start = _mpInitialValue <$> mps
+      priors = _mpPrior <$> mps
+      variations = fmap auto . _mpVariation <$> mps
+      model :: forall c. (Mode c, Scalar c ~ Double) => Model c
+      model = auto <$> model'
 
       logLH
         :: forall c. (Floating c, Mode c, Scalar c ~ Double)
@@ -48,21 +57,19 @@ runModel nsamps outfile dataH model modelparams = do
         toError
         . modelLogPosterior
             dataH
-            (fmap auto model)
-            (fmap (fmap auto) variations)
-            (fmap (ppToFunc . fmap auto) priors)
+            model
+            variations
+            (ppToFunc . fmap auto <$> priors)
 
       gLogLH = grad logLH
 
   putStrLn ""
 
+  -- if we want to print the full likelihood
   -- putStrLn "likelihood:"
   -- print . logLH $ fmap (var . T.unpack) mpnames
 
-  -- TODO
-  -- what is best value?!
-  -- find the maximum likelihood starting location
-  let xs = take (length start) $ conjugateGradientAscent logLH start
+  let xs = take (1000 * length start) $ gradientAscent' logLH start
       x = last xs
 
   start' <-
@@ -168,3 +175,42 @@ runModel nsamps outfile dataH model modelparams = do
         effect = chain >-> P.take nsamps >-> P.map showMC >-> P.toHandle f
 
     sample (runEffect effect) g
+
+
+-- taken directly from the `ad` package, but now testing for NaNs.
+
+-- | The 'gradientDescent' function performs a multivariate
+-- optimization, based on the naive-gradient-descent in the file
+-- @stalingrad\/examples\/flow-tests\/pre-saddle-1a.vlad@ from the
+-- VLAD compiler Stalingrad sources.  Its output is a stream of
+-- increasingly accurate results.  (Modulo the usual caveats.)
+--
+-- It uses reverse mode automatic differentiation to compute the gradient.
+gradientDescent'
+  :: (Traversable f, RealFloat a, Ord a)
+  => (forall s. Reifies s Tape => f (Reverse s a) -> Reverse s a)
+  -> f a
+  -> [f a]
+gradientDescent' f x0 = go x0 fx0 xgx0 0.1 (0 :: Int)
+  where
+    (fx0, xgx0) = Reverse.gradWith' (,) f x0
+    go x fx xgx !eta !i
+      | eta == 0              = [] -- step size is 0
+      | fx1 > fx || isNaN fx1 = go x fx xgx (eta/2) 0 -- we stepped too far
+      | zeroGrad xgx          = [] -- gradient is 0
+      | otherwise             =
+        x1 : if i == 10
+          then go x1 fx1 xgx1 (eta*2) 0
+          else go x1 fx1 xgx1 eta (i+1)
+
+      where
+        zeroGrad = all (\(_,g) -> g == 0)
+        x1 = fmap (\(xi,gxi) -> xi - eta * gxi) xgx
+        (fx1, xgx1) = Reverse.gradWith' (,) f x1
+
+gradientAscent'
+  :: (Traversable f, RealFloat a, Ord a)
+  => (forall s. Reifies s Tape => f (Reverse s a) -> Reverse s a)
+  -> f a
+  -> [f a]
+gradientAscent' f = gradientDescent' (negate . f)
