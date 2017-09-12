@@ -83,8 +83,6 @@ runModel nsamps outfile dataH model' modelparams = do
   let xs = take (10 * length start) $ gradientAscent' logLH start
       x = last xs
 
-  mapM_ (print . logLH) xs
-
   start' <-
     if any isNaN x || isNaN (logLH x)
       then do
