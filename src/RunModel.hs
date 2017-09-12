@@ -67,6 +67,12 @@ runModel nsamps outfile dataH model' modelparams = do
   putStrLn "starting from here..."
   print mpnames
   print start
+  putStrLn "with a prediction of..."
+  print . toError $ prediction =<< appVars variations start model
+  putStrLn "compared to the data..."
+  print dataH
+  putStrLn "and llh of..."
+  print $ logLH start
 
 
   -- if we want to print the full likelihood
@@ -75,6 +81,8 @@ runModel nsamps outfile dataH model' modelparams = do
 
   let xs = take (10 * length start) $ gradientAscent' logLH start
       x = last xs
+
+  mapM_ (print . logLH) xs
 
   start' <-
     if any isNaN x || isNaN (logLH x)
