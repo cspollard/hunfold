@@ -63,7 +63,7 @@ runModel nsamps outfile dataH model' modelparams = do
 
       gLogLH = grad logLH
 
-  putStrLn ""
+  putStrLn "finding best-fit starting parameters...\n"
 
   -- if we want to print the full likelihood
   -- putStrLn "likelihood:"
