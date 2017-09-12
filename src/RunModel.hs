@@ -73,7 +73,7 @@ runModel nsamps outfile dataH model' modelparams = do
   -- putStrLn "likelihood:"
   -- print . logLH $ fmap (var . T.unpack) mpnames
 
-  let xs = take (1000 * length start) $ gradientAscent' logLH start
+  let xs = take (10 * length start) $ gradientAscent' logLH start
       x = last xs
 
   start' <-
