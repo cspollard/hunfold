@@ -23,7 +23,7 @@ module Model
   , ppToFunc
   , modelLogLikelihood
   , modelLogPosterior
-  , appVar
+  , varDiff
   , appVars
   , prediction
   ) where
@@ -175,31 +175,33 @@ appVars
   :: (Additive t, Foldable t, Num a)
   => t (ModelVar a) -> t a -> Model a -> Either String (Model a)
 appVars mvs ps m = foldM (fmap . addM) m ms
-  where ms = ($ m) <$> liftI2 appVar mvs ps
+  where ms = ($ m) <$> liftI2 varDiff mvs ps
 
 
-mergeBkgs
+bkgDiff
   :: (KnownNat n, Num a)
   => a -> HashMap Text (V n a) -> HashMap Text (V n a) -> HashMap Text (V n a)
-mergeBkgs x b = fmap (x *^) . liftU2 (^-^) b
+bkgDiff x = liftU2 (sigDiff x)
 
 
-mergeSig :: (KnownNat n, Num a) => a -> V n a -> V n a -> V n a
-mergeSig x s = (x *^) . (^-^ s)
+sigDiff :: (KnownNat n, Num a) => a -> V n a -> V n a -> V n a
+sigDiff x s = (x *^) . (^-^ s)
 
 
-mergeMig
+migDiff
   :: (KnownNat n, KnownNat m, Num a)
   => a -> M n m a -> M n m a -> M n m a
-mergeMig x m = (x *!!) . (!-! m)
+migDiff x m = (x *!!) . (!-! m)
 
 
-mergeLumi :: Num c => c -> c -> c -> c
-mergeLumi x l = (x *) . flip (-) l
+lumiDiff :: Num c => c -> c -> c -> c
+lumiDiff x l = (x *) . flip (-) l
 
 
-appVar :: Num a => ModelVar a -> a -> Model a -> Either String (Model a)
-appVar ModelVar{..} x Model{..} = toEither "failed to apply model variation." $
+-- the outgoing "Model" is really a difference between the nominal model and
+-- the varied model.
+varDiff :: Num a => ModelVar a -> a -> Model a -> Either String (Model a)
+varDiff ModelVar{..} x Model{..} = toEither "failed to apply model variation." $
   join $ reifyVectorNat _mSig
     $ \(sig :: V n a) -> reifyMatrix1 _mMig
       $ \(mig :: M n m a) -> do
@@ -215,10 +217,10 @@ appVar ModelVar{..} x Model{..} = toEither "failed to apply model variation." $
 
         return
           $ Model
-            (toVector <$> maybe zero (mergeBkgs x bkgs) vBkgs)
-            (toVector $ maybe zero (mergeSig x sig) vSig)
-            (toVectorM $ maybe zero (mergeMig x mig) vMig)
-            (maybe 0 (mergeLumi x _mLumi) _mvLumi)
+            (toVector <$> maybe zero (bkgDiff x bkgs) vBkgs)
+            (toVector $ maybe zero (sigDiff x sig) vSig)
+            (toVectorM $ maybe zero (migDiff x mig) vMig)
+            (maybe 0 (lumiDiff x _mLumi) _mvLumi)
 
 
 toEither :: a -> Maybe b -> Either a b
