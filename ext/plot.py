@@ -33,6 +33,7 @@ for i in range(len(names)):
     plt.savefig("%s.png" % name)
     plt.clf()
 
+    best = param[0]
     med = np.median(param)
     q16 = np.percentile(param, 16)
     q84 = np.percentile(param, 84)
@@ -46,13 +47,25 @@ for i in range(len(names)):
 
     if name.startswith("recobin"):
         recobinx.append(float(name[7:]))
-        recobiny.append(med)
-        recobinerr.append((med-q16, q84-med))
+        recobiny.append(best)
+        recobinerr.append((best-q16, q84-best))
 
     elif name.startswith("truthbin"):
         truthbinx.append(float(name[8:]))
-        truthbiny.append(med)
-        truthbinerr.append((med-q16, q84-med))
+        truthbiny.append(best)
+        truthbinerr.append((best-q16, q84-best))
+
+    for j in range(i+1, len(names)):
+        paramy = xs[j]
+        namey = names[j]
+        fig = plt.figure()
+        fig.suptitle(name + " vs " + namey)
+        plt.hist2d(param, paramy, bins=50)
+        plt.colorbar()
+        plt.show()
+        plt.savefig("%svs%s.png" % (name, namey))
+        plt.clf()
+        plt.close()
 
 
 fig = plt.figure()
