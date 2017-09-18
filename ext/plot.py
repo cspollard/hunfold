@@ -102,7 +102,6 @@ fig.suptitle("nuisance params")
 (npbinnames, npbiny, npbinerr) = \
         map(list, zip(*sorted(zip(npbinnames, npbiny, npbinerr))))
 
-print npbinnames
 binsx = range(0, len(npbinnames))
 
 ax = plt.subplots()[1]
