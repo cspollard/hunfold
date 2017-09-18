@@ -3,8 +3,10 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
 import numpy as np
-from sys import stdin, stdout
+from sys import stdin, stdout, argv
 
+
+do2D = "--2d" in argv
 
 names = map(str.strip, stdin.readline().split(","))
 xs = np.loadtxt(stdin, delimiter=',').transpose()
@@ -13,6 +15,9 @@ xs = np.loadtxt(stdin, delimiter=',').transpose()
 if len(xs.shape) == 1:
     xs.shape = (1, xs.shape[0])
 
+npbiny = []
+npbinerr = []
+npbinnames = []
 truthbinx = []
 truthbiny = []
 truthbinerr = []
@@ -55,18 +60,23 @@ for i in range(len(names)):
         truthbiny.append(best)
         truthbinerr.append((best-q16, q84-best))
 
-    for j in range(i+1, len(names)):
-        paramy = xs[j]
-        namey = names[j]
-        fig = plt.figure()
-        fig.suptitle(name + " vs " + namey)
-        plt.hist2d(param, paramy, bins=50)
-        plt.colorbar()
-        plt.show()
-        plt.savefig("%svs%s.png" % (name, namey))
-        plt.clf()
-        plt.close()
+    elif "llh" not in name:
+        npbiny.append(best)
+        npbinerr.append((best-q16, q84-best))
+        npbinnames.append(name)
 
+    if do2D:
+        for j in range(i+1, len(names)):
+            paramy = xs[j]
+            namey = names[j]
+            fig = plt.figure()
+            fig.suptitle(name + " vs " + namey)
+            plt.hist2d(param, paramy, bins=50)
+            plt.colorbar()
+            plt.show()
+            plt.savefig("%svs%s.png" % (name, namey))
+            plt.clf()
+            plt.close()
 
 fig = plt.figure()
 fig.suptitle("reco")
@@ -83,5 +93,25 @@ fig.suptitle("truth")
 plt.errorbar(truthbinx, truthbiny, yerr=zip(*truthbinerr), xerr=0.5, fmt='o')
 # plt.yscale("log")
 plt.savefig("truthbin.png")
+plt.clf()
+plt.close()
+
+fig = plt.figure()
+fig.suptitle("nuisance params")
+
+(npbinnames, npbiny, npbinerr) = \
+        map(list, zip(*sorted(zip(npbinnames, npbiny, npbinerr))))
+
+print npbinnames
+binsx = range(0, len(npbinnames))
+
+ax = plt.subplots()[1]
+ax.set_xticks([-1] + binsx + [len(binsx)])
+ax.set_xticklabels([""] + npbinnames + [""], rotation=90,
+        rotation_mode="anchor", ha="right", fontsize=8)
+
+plt.errorbar(binsx, npbiny, yerr=zip(*npbinerr), xerr=0.5, fmt='o')
+plt.tight_layout()
+plt.savefig("npbin.png")
 plt.clf()
 plt.close()
