@@ -16,6 +16,7 @@ import           Data.List                     (intersperse)
 import           Data.Monoid                   ((<>))
 import           Data.Reflection               (Reifies)
 import qualified Data.Text                     as T
+import           Data.Traversable              (mapAccumL)
 import qualified Data.Vector                   as V
 import           InMatrix                      hiding (trace, transpose, zero)
 import           Linear.Matrix                 hiding (trace)
@@ -168,16 +169,23 @@ runModel nsamps outfile dataH model' modelparams = do
     hSetBuffering f LineBuffering
 
     let binnames = iover traversed (\i _ -> "recobin" <> T.pack (show i)) predstart
+        normnames = ("norm" <>) <$> V.filter (T.isInfixOf "truebin") mpnames
         showMC (ps, llh) =
           let theseparams = transform' ps
+              normalize' ts =
+                let (s', ts') = mapAccumL (\s t -> (s+t, t/s')) 0 ts
+                in ts'
               thispred =
                 toError $ prediction =<< appVars variations theseparams model
+              normparams =
+                normalize' . fmap snd . V.filter (T.isInfixOf "truebin" . fst)
+                $ V.zip mpnames theseparams
           in
             mconcat . intersperse ", " . V.toList
-            $ show <$> V.cons llh theseparams V.++ thispred
+            $ show <$> V.cons llh theseparams V.++ thispred V.++ normparams
 
     hPutStrLn f . mconcat . intersperse ", " . fmap T.unpack
-      $ "llh" : V.toList mpnames ++ V.toList binnames
+      $ "llh" : V.toList mpnames ++ V.toList binnames ++ V.toList normnames
 
     let effect :: (PrimMonad m, MonadIO m) => Effect (Prob m) ()
         effect = chain >-> P.take nsamps >-> P.map showMC >-> P.toHandle f
