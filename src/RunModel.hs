@@ -169,7 +169,7 @@ runModel nsamps outfile dataH model' modelparams = do
     hSetBuffering f LineBuffering
 
     let binnames = iover traversed (\i _ -> "recobin" <> T.pack (show i)) predstart
-        normnames = ("norm" <>) <$> V.filter (T.isInfixOf "truebin") mpnames
+        normnames = ("norm" <>) <$> V.filter (T.isInfixOf "truthbin") mpnames
         showMC (ps, llh) =
           let theseparams = transform' ps
               normalize' ts =
@@ -178,7 +178,7 @@ runModel nsamps outfile dataH model' modelparams = do
               thispred =
                 toError $ prediction =<< appVars variations theseparams model
               normparams =
-                normalize' . fmap snd . V.filter (T.isInfixOf "truebin" . fst)
+                normalize' . fmap snd . V.filter (T.isInfixOf "truthbin" . fst)
                 $ V.zip mpnames theseparams
           in
             mconcat . intersperse ", " . V.toList
