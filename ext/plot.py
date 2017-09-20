@@ -21,6 +21,9 @@ npbinnames = []
 truthbinx = []
 truthbiny = []
 truthbinerr = []
+normtruthbinx = []
+normtruthbiny = []
+normtruthbinerr = []
 recobinx = []
 recobiny = []
 recobinerr = []
@@ -60,6 +63,11 @@ for i in range(len(names)):
         truthbiny.append(best)
         truthbinerr.append((best-q16, q84-best))
 
+    elif name.startswith("normtruthbin"):
+        normtruthbinx.append(float(name[12:]))
+        normtruthbiny.append(best)
+        normtruthbinerr.append((best-q16, q84-best))
+
     elif "llh" not in name:
         npbiny.append(best)
         npbinerr.append((best-q16, q84-best))
@@ -82,7 +90,6 @@ fig = plt.figure()
 fig.suptitle("reco")
 
 plt.errorbar(recobinx, recobiny, yerr=zip(*recobinerr), xerr=0.5, fmt='o')
-# plt.yscale("log")
 plt.savefig("recobin.png")
 plt.clf()
 plt.close()
@@ -91,8 +98,15 @@ fig = plt.figure()
 fig.suptitle("truth")
 
 plt.errorbar(truthbinx, truthbiny, yerr=zip(*truthbinerr), xerr=0.5, fmt='o')
-# plt.yscale("log")
 plt.savefig("truthbin.png")
+plt.clf()
+plt.close()
+
+fig = plt.figure()
+fig.suptitle("normtruth")
+
+plt.errorbar(normtruthbinx, normtruthbiny, yerr=zip(*normtruthbinerr), xerr=0.5, fmt='o')
+plt.savefig("normtruthbin.png")
 plt.clf()
 plt.close()
 
