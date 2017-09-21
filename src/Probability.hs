@@ -54,6 +54,7 @@ logLogNormalP m s x =
 {-# INLINABLE logLogNormalP #-}
 {-# SPECIALIZE logLogNormalP :: Double -> Double -> Double -> Double #-}
 
+
 logPoissonP
     :: (Integral a, Floating b)
     => a -> b -> b
@@ -61,6 +62,7 @@ logPoissonP k l = fromIntegral k * log l - l - logFactorial k
 {-# INLINABLE logPoissonP #-}
 {-# SPECIALIZE logPoissonP :: Integral a => a -> Double -> Double #-}
 {-# SPECIALIZE logPoissonP :: Int -> Double -> Double #-}
+
 
 logFactorial
     :: (Integral a, Floating b)

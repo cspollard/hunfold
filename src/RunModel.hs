@@ -9,6 +9,7 @@
 
 module RunModel where
 
+import qualified Control.Foldl.Statistics      as FS
 import           Control.Lens
 import           Control.Monad                 (when)
 import qualified Data.HashMap.Strict           as M
@@ -17,6 +18,7 @@ import           Data.Monoid                   ((<>))
 import           Data.Reflection               (Reifies)
 import qualified Data.Text                     as T
 import           Data.Traversable              (mapAccumL)
+import           Data.Vector                   (Vector)
 import qualified Data.Vector                   as V
 import           InMatrix                      hiding (trace, transpose, zero)
 import           Linear.Matrix                 hiding (trace)
@@ -29,7 +31,7 @@ import           Numeric.AD.Mode.Reverse       as Reverse (gradWith')
 import           Pipes
 import qualified Pipes.Prelude                 as P
 import           System.IO                     (BufferMode (..), IOMode (..),
-                                                hFlush, hPutStrLn,
+                                                hFlush, hPutStrLn, hPutStrLn,
                                                 hSetBuffering, stdout, withFile)
 import           System.Random.MWC.Probability
 
@@ -42,7 +44,7 @@ runModel
   -> V.Vector Int
   -> Model Double
   -> M.HashMap T.Text (ModelParam Double)
-  -> IO ()
+  -> IO (Vector FS.LMVSK)
 runModel nsamps outfile dataH model' modelparams = do
   let (mpnames, mps) = V.unzip . V.fromList $ M.toList modelparams
       start = _mpInitialValue <$> mps
@@ -81,8 +83,7 @@ runModel nsamps outfile dataH model' modelparams = do
   -- putStrLn "likelihood:"
   -- print . logLH $ fmap (var . T.unpack) mpnames
 
-  let xs = take (100 * length start) $ gradientAscent' logLH start
-      x = last xs
+  let x = last . take (100 * length start) $ gradientAscent' logLH start
 
   start' <-
     if any isNaN x || isNaN (logLH x)
@@ -170,10 +171,12 @@ runModel nsamps outfile dataH model' modelparams = do
 
     let binnames = iover traversed (\i _ -> "recobin" <> T.pack (show i)) predstart
         normnames = ("norm" <>) <$> V.filter (T.isInfixOf "truthbin") mpnames
+        names = mpnames V.++ binnames V.++ normnames
+
         showMC (ps, llh) =
           let theseparams = transform' ps
               normalize' ts =
-                let (s', ts') = mapAccumL (\s t -> (s+t, t/s')) 0 ts
+                let (s', ts') = mapAccumL (\s u -> (s+u, u/s')) 0 ts
                 in ts'
               thispred =
                 toError $ prediction =<< appVars variations theseparams model
@@ -184,13 +187,36 @@ runModel nsamps outfile dataH model' modelparams = do
             mconcat . intersperse ", " . V.toList
             $ show <$> V.cons llh theseparams V.++ thispred V.++ normparams
 
+
+        -- toHandle :: MonadIO m => FoldM String m ()
+        toHandle h =
+          FS.FoldM
+            (\() u -> liftIO . hPutStrLn h $ showMC u)
+            (return ())
+            return
+
+        fastLMVSKs :: Monad m => Int -> FS.FoldM m (Vector Double) (Vector FS.LMVSK)
+        fastLMVSKs n =
+          case FS.fastLMVSK of
+            (FS.Fold h i r) ->
+              FS.generalize $ FS.Fold (V.zipWith h) (V.replicate n i) (fmap r)
+
+        folder :: (PrimMonad m, MonadIO m) => Prob m (Vector FS.LMVSK)
+        folder =
+          FS.impurely P.foldM printAndStore
+          $ chain >-> P.take nsamps
+
+
+        printAndStore :: MonadIO m => FS.FoldM m (Vector Double, Double) (Vector FS.LMVSK)
+        printAndStore =
+          const
+          <$> FS.premapM fst (fastLMVSKs $ V.length names)
+          <*> toHandle f
+
     hPutStrLn f . mconcat . intersperse ", " . fmap T.unpack
-      $ "llh" : V.toList mpnames ++ V.toList binnames ++ V.toList normnames
+      $ "llh" : V.toList names
 
-    let effect :: (PrimMonad m, MonadIO m) => Effect (Prob m) ()
-        effect = chain >-> P.take nsamps >-> P.map showMC >-> P.toHandle f
-
-    sample (runEffect effect) g
+    sample folder g
 
 
 -- taken directly from the `ad` package, but now testing for NaNs.

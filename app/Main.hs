@@ -4,6 +4,7 @@
 
 module Main where
 
+import           Control.Monad        (void)
 import           Data.Aeson
 import           Data.Aeson.Types     (Parser, parseEither)
 import qualified Data.ByteString.Lazy as BS
@@ -58,7 +59,7 @@ main = do
   case parseEither parseModel =<< values of
     Left err -> error err
     Right (dataH, model, modelparams)
-      -> runModel nsamps outfile dataH model modelparams
+      -> void $ runModel nsamps outfile dataH model modelparams
 
 
 parseModel
