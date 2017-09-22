@@ -175,7 +175,7 @@ runModel nsamps outfile dataH model' modelparams = do
         normnames = ("norm" <>) <$> V.filter (T.isInfixOf "truthbin") mpnames
         names = mpnames V.++ binnames V.++ normnames
 
-        showMC (ps, llh) =
+        allParams (ps, llh) =
           let theseparams = transform' ps
               normalize' ts =
                 let (s', ts') = mapAccumL (\s u -> (s+u, u/s')) 0 ts
@@ -185,9 +185,11 @@ runModel nsamps outfile dataH model' modelparams = do
               normparams =
                 normalize' . fmap snd . V.filter (T.isInfixOf "truthbin" . fst)
                 $ V.zip mpnames theseparams
-          in
+          in (theseparams V.++ thispred V.++ normparams, llh)
+
+        showMC (ps, llh) =
             mconcat . intersperse ", " . V.toList
-            $ show <$> V.cons llh theseparams V.++ thispred V.++ normparams
+            $ show <$> V.cons llh ps
 
 
         -- toHandle :: MonadIO m => FoldM String m ()
@@ -206,7 +208,7 @@ runModel nsamps outfile dataH model' modelparams = do
         folder :: (PrimMonad m, MonadIO m) => Prob m (Vector FS.LMVSK)
         folder =
           FS.impurely P.foldM printAndStore
-          $ chain >-> P.take nsamps
+          $ chain >-> P.take nsamps >-> P.map allParams
 
 
         printAndStore :: MonadIO m => FS.FoldM m (Vector Double, Double) (Vector FS.LMVSK)
