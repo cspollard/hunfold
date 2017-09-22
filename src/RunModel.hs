@@ -7,7 +7,9 @@
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE TypeFamilies              #-}
 
-module RunModel where
+module RunModel
+  ( runModel, FS.LMVSK(..)
+  ) where
 
 import qualified Control.Foldl.Statistics      as FS
 import           Control.Lens
