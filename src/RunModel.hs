@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns              #-}
+{-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
@@ -8,16 +9,18 @@
 {-# LANGUAGE TypeFamilies              #-}
 
 module RunModel
-  ( runModel, FS.LMVSK(..)
+  ( runModel, X.TDigest
   ) where
 
-import qualified Control.Foldl.Statistics      as FS
+import           Control.Foldl                 (FoldM (..))
+import qualified Control.Foldl                 as F
 import           Control.Lens
 import           Control.Monad                 (when)
 import qualified Data.HashMap.Strict           as M
 import           Data.List                     (intersperse)
 import           Data.Monoid                   ((<>))
 import           Data.Reflection               (Reifies)
+import           Data.TDigest                  as X
 import qualified Data.Text                     as T
 import           Data.Traversable              (mapAccumL)
 import           Data.Vector                   (Vector)
@@ -46,7 +49,7 @@ runModel
   -> V.Vector Int
   -> Model Double
   -> M.HashMap T.Text (ModelParam Double)
-  -> IO (M.HashMap T.Text FS.LMVSK)
+  -> IO (M.HashMap T.Text (TDigest 3))
 runModel nsamps outfile dataH model' modelparams = do
   let (mpnames, mps) = V.unzip . V.fromList $ M.toList modelparams
       start = _mpInitialValue <$> mps
@@ -194,27 +197,24 @@ runModel nsamps outfile dataH model' modelparams = do
 
         -- toHandle :: MonadIO m => FoldM String m ()
         toHandle h =
-          FS.FoldM
+          FoldM
             (\() u -> liftIO . hPutStrLn h $ showMC u)
             (return ())
             return
 
-        fastLMVSKs :: Monad m => Int -> FS.FoldM m (Vector Double) (Vector FS.LMVSK)
-        fastLMVSKs n =
-          case FS.fastLMVSK of
-            (FS.Fold h i r) ->
-              FS.generalize $ FS.Fold (V.zipWith h) (V.replicate n i) (fmap r)
+        tdigests :: Monad m => Int -> FoldM m (Vector Double) (Vector (TDigest 3))
+        tdigests n = F.generalize $ F.Fold (V.zipWith $ flip insert) (V.replicate n mempty) id
 
-        folder :: (PrimMonad m, MonadIO m) => Prob m (Vector FS.LMVSK)
+        folder :: (PrimMonad m, MonadIO m) => Prob m (Vector (TDigest 3))
         folder =
-          FS.impurely P.foldM printAndStore
+          F.impurely P.foldM printAndStore
           $ chain >-> P.take nsamps >-> P.map allParams
 
 
-        printAndStore :: MonadIO m => FS.FoldM m (Vector Double, Double) (Vector FS.LMVSK)
+        printAndStore :: MonadIO m => FoldM m (Vector Double, Double) (Vector (TDigest 3))
         printAndStore =
           const
-          <$> FS.premapM fst (fastLMVSKs $ V.length names)
+          <$> F.premapM fst (tdigests $ V.length names)
           <*> toHandle f
 
     hPutStrLn f . mconcat . intersperse ", " . fmap T.unpack
