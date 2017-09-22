@@ -44,7 +44,7 @@ runModel
   -> V.Vector Int
   -> Model Double
   -> M.HashMap T.Text (ModelParam Double)
-  -> IO (Vector FS.LMVSK)
+  -> IO (M.HashMap T.Text FS.LMVSK)
 runModel nsamps outfile dataH model' modelparams = do
   let (mpnames, mps) = V.unzip . V.fromList $ M.toList modelparams
       start = _mpInitialValue <$> mps
@@ -216,7 +216,7 @@ runModel nsamps outfile dataH model' modelparams = do
     hPutStrLn f . mconcat . intersperse ", " . fmap T.unpack
       $ "llh" : V.toList names
 
-    sample folder g
+    M.fromList . V.toList . V.zip names <$> sample folder g
 
 
 -- taken directly from the `ad` package, but now testing for NaNs.
