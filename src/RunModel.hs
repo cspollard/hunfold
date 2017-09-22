@@ -49,7 +49,7 @@ runModel
   -> V.Vector Int
   -> Model Double
   -> M.HashMap T.Text (ModelParam Double)
-  -> IO (M.HashMap T.Text (TDigest 3))
+  -> IO (M.HashMap T.Text (Maybe Double, TDigest 3))
 runModel nsamps outfile dataH model' modelparams = do
   let (mpnames, mps) = V.unzip . V.fromList $ M.toList modelparams
       start = _mpInitialValue <$> mps
@@ -176,7 +176,7 @@ runModel nsamps outfile dataH model' modelparams = do
 
     let binnames = iover traversed (\i _ -> "recobin" <> T.pack (show i)) predstart
         normnames = ("norm" <>) <$> V.filter (T.isInfixOf "truthbin") mpnames
-        names = mpnames V.++ binnames V.++ normnames
+        names = V.cons "llh" $ mpnames V.++ binnames V.++ normnames
 
         allParams (ps, llh) =
           let theseparams = transform' ps
@@ -188,33 +188,33 @@ runModel nsamps outfile dataH model' modelparams = do
               normparams =
                 normalize' . fmap snd . V.filter (T.isInfixOf "truthbin" . fst)
                 $ V.zip mpnames theseparams
-          in (theseparams V.++ thispred V.++ normparams, llh)
+          in V.cons llh $ theseparams V.++ thispred V.++ normparams
 
-        showMC (ps, llh) =
-            mconcat . intersperse ", " . V.toList
-            $ show <$> V.cons llh ps
+        showMC ps = mconcat . intersperse ", " . V.toList $ show <$> ps
 
-
-        -- toHandle :: MonadIO m => FoldM String m ()
         toHandle h =
           FoldM
             (\() u -> liftIO . hPutStrLn h $ showMC u)
             (return ())
             return
 
-        tdigests :: Monad m => Int -> FoldM m (Vector Double) (Vector (TDigest 3))
-        tdigests n = F.generalize $ F.Fold (V.zipWith $ flip insert) (V.replicate n mempty) id
+        vectorize :: Int -> F.Fold a b -> F.Fold (Vector a) (Vector b)
+        vectorize n fol =
+          case fol of
+            (F.Fold h u r) -> F.Fold (V.zipWith h) (V.replicate n u) (fmap r)
 
-        folder :: (PrimMonad m, MonadIO m) => Prob m (Vector (TDigest 3))
+        tdigestf :: F.Fold Double (TDigest 3)
+        tdigestf = F.Fold (flip insert) mempty id
+
         folder =
           F.impurely P.foldM printAndStore
           $ chain >-> P.take nsamps >-> P.map allParams
 
 
-        printAndStore :: MonadIO m => FoldM m (Vector Double, Double) (Vector (TDigest 3))
+        printAndStore :: MonadIO m => FoldM m (Vector Double) (Vector (Maybe Double, TDigest 3))
         printAndStore =
           const
-          <$> F.premapM fst (tdigests $ V.length names)
+          <$> F.generalize (vectorize (V.length names) ((,) <$> F.head <*> tdigestf))
           <*> toHandle f
 
     hPutStrLn f . mconcat . intersperse ", " . fmap T.unpack
