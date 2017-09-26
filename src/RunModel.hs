@@ -88,7 +88,7 @@ runModel nsamps outfile dataH model' modelparams = do
   -- putStrLn "likelihood:"
   -- print . logLH $ fmap (var . T.unpack) mpnames
 
-  let x = last . take (100 * length start) $ gradientAscent' logLH start
+  let x = last . take (10 * length start) $ gradientAscent' logLH start
 
   start' <-
     if any isNaN x || isNaN (logLH x)
