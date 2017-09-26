@@ -73,8 +73,7 @@ runModel nsamps outfile dataH model' modelparams = do
 
   putStrLn "finding best-fit starting parameters"
   putStrLn "starting from here:"
-  print mpnames
-  print start
+  print $ V.zip mpnames start
   putStrLn "\nwith a reco prediction of:"
   print . toError $ prediction =<< appVars variations start model
   putStrLn "\ncompared to the data:"
@@ -105,9 +104,9 @@ runModel nsamps outfile dataH model' modelparams = do
         return x
 
   putStrLn "best-fit params:"
-  print start'
+  print $ V.zip mpnames start'
   putStrLn "\ngradient of log-likelihood given best-fit params:"
-  print $ gLogLH start'
+  print . V.zip mpnames $ gLogLH start'
   putStrLn "\nlog-likelihood of best-fit params:"
   print $ logLH start'
   putStrLn ""
