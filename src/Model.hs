@@ -195,7 +195,7 @@ migDiff x m = (x *!!) . (!-! m)
 
 
 lumiDiff :: Num c => c -> c -> c -> c
-lumiDiff x l = ((1-x) *) . flip (-) l
+lumiDiff x l = ((x-1) *) . flip (-) l
 
 
 -- the outgoing "Model" is really a difference between the nominal model and
