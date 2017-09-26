@@ -217,8 +217,7 @@ runModel nsamps outfile dataH model' modelparams = do
           <$> F.generalize (vectorize (V.length names) ((,) <$> F.head <*> tdigestf))
           <*> toHandle f
 
-    hPutStrLn f . mconcat . intersperse ", " . fmap T.unpack
-      $ "llh" : V.toList names
+    hPutStrLn f . mconcat . intersperse ", " $ T.unpack <$> V.toList names
 
     M.fromList . V.toList . V.zip names <$> sample folder g
 
