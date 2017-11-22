@@ -51,7 +51,7 @@ for i in range(len(names)):
     plt.bar(center, hist, align='center', width=width)
     yint = ax.get_yaxis().get_data_interval()
     plt.plot([best, best], [yint[0], yint[1]], color='red', lw=2)
-    plt.savefig("%s.png" % name)
+    plt.savefig("%s.pdf" % name)
     plt.clf()
 
 
@@ -86,7 +86,7 @@ for i in range(len(names)):
             plt.hist2d(param, paramy, bins=50)
             plt.colorbar()
             plt.show()
-            plt.savefig("%svs%s.png" % (name, namey))
+            plt.savefig("%svs%s.pdf" % (name, namey))
             plt.clf()
             plt.close()
 
@@ -94,7 +94,7 @@ fig = plt.figure()
 fig.suptitle("reco")
 
 plt.errorbar(recobinx, recobiny, yerr=zip(*recobinerr), xerr=0.5, fmt='o')
-plt.savefig("recobin.png")
+plt.savefig("recobin.pdf")
 plt.clf()
 plt.close()
 
@@ -102,7 +102,7 @@ fig = plt.figure()
 fig.suptitle("truth")
 
 plt.errorbar(truthbinx, truthbiny, yerr=zip(*truthbinerr), xerr=0.5, fmt='o')
-plt.savefig("truthbin.png")
+plt.savefig("truthbin.pdf")
 plt.clf()
 plt.close()
 
@@ -110,7 +110,7 @@ fig = plt.figure()
 fig.suptitle("normtruth")
 
 plt.errorbar(normtruthbinx, normtruthbiny, yerr=zip(*normtruthbinerr), xerr=0.5, fmt='o')
-plt.savefig("normtruthbin.png")
+plt.savefig("normtruthbin.pdf")
 plt.clf()
 plt.close()
 
@@ -129,6 +129,6 @@ ax.set_xticklabels([""] + npbinnames + [""], rotation=90,
 
 plt.errorbar(binsx, npbiny, yerr=zip(*npbinerr), xerr=0.5, fmt='o')
 plt.tight_layout()
-plt.savefig("npbin.png")
+plt.savefig("npbin.pdf")
 plt.clf()
 plt.close()
