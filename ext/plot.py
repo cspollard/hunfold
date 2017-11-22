@@ -2,6 +2,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
+import matplotlib.lines as lines
 import numpy as np
 from sys import stdin, stdout, argv
 
@@ -34,22 +35,25 @@ for i in range(len(names)):
     width = 0.7 * (bins[1] - bins[0])
     center = (bins[:-1] + bins[1:]) / 2
 
-    fig = plt.figure()
-    fig.suptitle(name)
-
-    plt.bar(center, hist, align='center', width=width)
-    plt.savefig("%s.png" % name)
-    plt.clf()
-
     best = param[0]
     med = np.median(param)
     q16 = np.percentile(param, 16)
     q84 = np.percentile(param, 84)
 
-    print name, "median, mean, low, high: %.3e, %.3e, %.3e, %.3e" \
-            % ( med, np.mean(param)
+    print name, "mode, median, mean, low, high: %.3e, %.3e, %.3e, %.3e, %.3e" \
+            % ( best, med, np.mean(param)
               , q16, q84)
     stdout.flush()
+
+    fig, ax = plt.subplots()
+    fig.suptitle(name)
+
+    plt.bar(center, hist, align='center', width=width)
+    yint = ax.get_yaxis().get_data_interval()
+    plt.plot([best, best], [yint[0], yint[1]], color='red', lw=2)
+    plt.savefig("%s.png" % name)
+    plt.clf()
+
 
     plt.close()
 
