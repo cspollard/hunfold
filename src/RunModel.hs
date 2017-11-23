@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns              #-}
+{-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
@@ -8,16 +9,18 @@
 {-# LANGUAGE TypeFamilies              #-}
 
 module RunModel
-  ( runModel, FS.LMVSK(..)
+  ( runModel, X.TDigest
   ) where
 
-import qualified Control.Foldl.Statistics      as FS
+import           Control.Foldl                 (FoldM (..))
+import qualified Control.Foldl                 as F
 import           Control.Lens
 import           Control.Monad                 (when)
 import qualified Data.HashMap.Strict           as M
 import           Data.List                     (intersperse)
 import           Data.Monoid                   ((<>))
 import           Data.Reflection               (Reifies)
+import           Data.TDigest                  as X
 import qualified Data.Text                     as T
 import           Data.Traversable              (mapAccumL)
 import           Data.Vector                   (Vector)
@@ -46,7 +49,7 @@ runModel
   -> V.Vector Int
   -> Model Double
   -> M.HashMap T.Text (ModelParam Double)
-  -> IO (M.HashMap T.Text FS.LMVSK)
+  -> IO (M.HashMap T.Text (Maybe Double, TDigest 3))
 runModel nsamps outfile dataH model' modelparams = do
   let (mpnames, mps) = V.unzip . V.fromList $ M.toList modelparams
       start = _mpInitialValue <$> mps
@@ -70,8 +73,7 @@ runModel nsamps outfile dataH model' modelparams = do
 
   putStrLn "finding best-fit starting parameters"
   putStrLn "starting from here:"
-  print mpnames
-  print start
+  print $ V.zip mpnames start
   putStrLn "\nwith a reco prediction of:"
   print . toError $ prediction =<< appVars variations start model
   putStrLn "\ncompared to the data:"
@@ -102,9 +104,9 @@ runModel nsamps outfile dataH model' modelparams = do
         return x
 
   putStrLn "best-fit params:"
-  print start'
+  print $ V.zip mpnames start'
   putStrLn "\ngradient of log-likelihood given best-fit params:"
-  print $ gLogLH start'
+  print . V.zip mpnames $ gLogLH start'
   putStrLn "\nlog-likelihood of best-fit params:"
   print $ logLH start'
   putStrLn ""
@@ -173,7 +175,7 @@ runModel nsamps outfile dataH model' modelparams = do
 
     let binnames = iover traversed (\i _ -> "recobin" <> T.pack (show i)) predstart
         normnames = ("norm" <>) <$> V.filter (T.isInfixOf "truthbin") mpnames
-        names = mpnames V.++ binnames V.++ normnames
+        names = V.cons "llh" $ mpnames V.++ binnames V.++ normnames
 
         allParams (ps, llh) =
           let theseparams = transform' ps
@@ -185,40 +187,36 @@ runModel nsamps outfile dataH model' modelparams = do
               normparams =
                 normalize' . fmap snd . V.filter (T.isInfixOf "truthbin" . fst)
                 $ V.zip mpnames theseparams
-          in (theseparams V.++ thispred V.++ normparams, llh)
+          in V.cons llh $ theseparams V.++ thispred V.++ normparams
 
-        showMC (ps, llh) =
-            mconcat . intersperse ", " . V.toList
-            $ show <$> V.cons llh ps
+        showMC ps = mconcat . intersperse ", " . V.toList $ show <$> ps
 
-
-        -- toHandle :: MonadIO m => FoldM String m ()
         toHandle h =
-          FS.FoldM
+          FoldM
             (\() u -> liftIO . hPutStrLn h $ showMC u)
             (return ())
             return
 
-        fastLMVSKs :: Monad m => Int -> FS.FoldM m (Vector Double) (Vector FS.LMVSK)
-        fastLMVSKs n =
-          case FS.fastLMVSK of
-            (FS.Fold h i r) ->
-              FS.generalize $ FS.Fold (V.zipWith h) (V.replicate n i) (fmap r)
+        vectorize :: Int -> F.Fold a b -> F.Fold (Vector a) (Vector b)
+        vectorize n fol =
+          case fol of
+            (F.Fold h u r) -> F.Fold (V.zipWith h) (V.replicate n u) (fmap r)
 
-        folder :: (PrimMonad m, MonadIO m) => Prob m (Vector FS.LMVSK)
+        tdigestf :: F.Fold Double (TDigest 3)
+        tdigestf = F.Fold (flip insert) mempty id
+
         folder =
-          FS.impurely P.foldM printAndStore
+          F.impurely P.foldM printAndStore
           $ chain >-> P.take nsamps >-> P.map allParams
 
 
-        printAndStore :: MonadIO m => FS.FoldM m (Vector Double, Double) (Vector FS.LMVSK)
+        printAndStore :: MonadIO m => FoldM m (Vector Double) (Vector (Maybe Double, TDigest 3))
         printAndStore =
           const
-          <$> FS.premapM fst (fastLMVSKs $ V.length names)
+          <$> F.generalize (vectorize (V.length names) ((,) <$> F.head <*> tdigestf))
           <*> toHandle f
 
-    hPutStrLn f . mconcat . intersperse ", " . fmap T.unpack
-      $ "llh" : V.toList names
+    hPutStrLn f . mconcat . intersperse ", " $ T.unpack <$> V.toList names
 
     M.fromList . V.toList . V.zip names <$> sample folder g
 
