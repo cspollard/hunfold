@@ -36,7 +36,7 @@ import           Numeric.AD.Mode.Reverse       as Reverse (gradWith')
 import           Pipes
 import qualified Pipes.Prelude                 as P
 import           System.IO                     (BufferMode (..), IOMode (..),
-                                                hFlush, hPutStrLn, hPutStrLn,
+                                                hFlush, hPutStrLn,
                                                 hSetBuffering, stdout, withFile)
 import           System.Random.MWC.Probability
 
