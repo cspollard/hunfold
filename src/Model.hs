@@ -83,15 +83,17 @@ instance FromJSON a => FromJSON (ModelVar a) where
 
 data ParamPrior a =
   Flat
+  | NonNegative
   | Normal a a
   | LogNormal a a
   deriving (Generic, Functor, Show)
 
 instance FromJSON a => FromJSON (ParamPrior a) where
   parseJSON (String "Flat") = return Flat
+  parseJSON (String "NonNegative") = return NonNegative
 
   parseJSON (Object o) =
-    (o .: "Normal" >>= p Normal)
+      (o .: "Normal" >>= p Normal)
       <|> (o .: "LogNormal" >>= p LogNormal)
     where
       p f (Object m) = f <$> m .: "Mu" <*> m .: "Sigma"
@@ -100,8 +102,10 @@ instance FromJSON a => FromJSON (ParamPrior a) where
   parseJSON invalid = typeMismatch "ParamPrior" invalid
 
 
-ppToFunc :: Floating a => ParamPrior a -> (a -> a)
+ppToFunc :: (Ord a, Floating a) => ParamPrior a -> (a -> a)
 ppToFunc Flat            = const 0
+ppToFunc NonNegative = \x ->
+  if x < 0 then negate (1/0) else 0
 ppToFunc (Normal m s)    = logNormalP m s
 ppToFunc (LogNormal m s) = logLogNormalP m s
 

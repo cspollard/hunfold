@@ -59,7 +59,7 @@ runModel nsamps outfile dataH model' modelparams = do
       model = auto <$> model'
 
       logLH
-        :: forall c. (Floating c, Mode c, Scalar c ~ Double)
+        :: forall c. (Ord c, Floating c, Mode c, Scalar c ~ Double)
         => V.Vector c -> c
       logLH =
         toError
