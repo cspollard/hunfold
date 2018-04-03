@@ -136,7 +136,7 @@ modelLogPosterior dats model mps logPriors ps =
     mps' <- toEither "incorrect length of mps" $ fromVector mps
     logPriors' <- toEither "incorrect length of logPriors" $ fromVector logPriors
     model' <- appVars mps' ps' model
-    logLike <- toEither "incorrect length of dats" $ modelLogLikelihood dats model'
+    logLike <- toEither "incorrect length of data" $ modelLogLikelihood dats model'
 
     let logPrior = sum $ logPriors' <*> ps'
 
