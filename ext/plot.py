@@ -10,7 +10,15 @@ from sys import stdin, stdout, argv
 do2D = "--2d" in argv
 
 names = map(str.strip, stdin.readline().split(","))
-xs = np.loadtxt(stdin, delimiter=',').transpose()
+xs_unsorted = np.loadtxt(stdin, delimiter=',')
+print xs_unsorted
+
+xs_sorted = np.flipud(xs_unsorted[xs_unsorted[:,0].argsort()])
+print xs_sorted
+
+xs = xs_sorted.transpose()
+
+print xs.shape
 
 # if we only have one param we need to add a dimension.
 if len(xs.shape) == 1:
@@ -28,17 +36,27 @@ normtruthbinerr = []
 recobinx = []
 recobiny = []
 recobinerr = []
+
+nentries = xs.shape[1]
+
+# int() == floor() for positive numbers.
+entry68 = int(nentries*0.68)
+print entry68
+
 for i in range(len(names)):
     param = xs[i]
+    best68 = param[:entry68]
     name = names[i]
+
     hist, bins = np.histogram(param, bins=50)
     width = 0.7 * (bins[1] - bins[0])
     center = (bins[:-1] + bins[1:]) / 2
 
     best = param[0]
     med = np.median(param)
-    q16 = np.percentile(param, 16)
-    q84 = np.percentile(param, 84)
+
+    q16 = np.min(best68)
+    q84 = np.max(best68)
 
     print name, "mode, median, mean, low, high: %.3e, %.3e, %.3e, %.3e, %.3e" \
             % ( best, med, np.mean(param)
@@ -51,6 +69,10 @@ for i in range(len(names)):
     plt.bar(center, hist, align='center', width=width)
     yint = ax.get_yaxis().get_data_interval()
     plt.plot([best, best], [yint[0], yint[1]], color='red', lw=2)
+    plt.plot([q16, q16], [yint[0], yint[1]], color='red', lw=2,
+            linestyle="dashed")
+    plt.plot([q84, q84], [yint[0], yint[1]], color='red', lw=2,
+            linestyle="dashed")
     plt.savefig("%s.pdf" % name)
     plt.clf()
 
