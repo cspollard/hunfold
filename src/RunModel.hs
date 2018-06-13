@@ -25,10 +25,10 @@ import qualified Data.Text                     as T
 import           Data.Traversable              (mapAccumL)
 import           Data.Vector                   (Vector)
 import qualified Data.Vector                   as V
-import           InMatrix                      hiding (trace, transpose, zero)
-import           Linear.Matrix                 hiding (trace)
+import           InMatrix
+import           Linear.Matrix
 import           MarkovChain
-import           Matrix                        hiding (trace)
+import           Matrix
 import           Model
 import           Numeric.AD
 import           Numeric.AD.Internal.Reverse   (Reverse, Tape)
