@@ -25,17 +25,25 @@ if len(xs.shape) == 1:
     xs.shape = (1, xs.shape[0])
 
 npbiny = []
+npbinmed = []
+npbinmederr = []
 npbinerr = []
 npbinnames = []
 truthbinx = []
 truthbiny = []
 truthbinerr = []
+truthbinmed = []
+truthbinmederr = []
 normtruthbinx = []
 normtruthbiny = []
 normtruthbinerr = []
+normtruthbinmed = []
+normtruthbinmederr = []
 recobinx = []
 recobiny = []
 recobinerr = []
+recobinmed = []
+recobinmederr = []
 
 nentries = xs.shape[1]
 
@@ -54,9 +62,9 @@ for i in range(len(names)):
 
     best = param[0]
     med = np.median(param)
-
-    q16 = np.min(best68)
-    q84 = np.max(best68)
+    (q16, q84) = np.percentile(param, [16, 84])
+    globq16 = np.min(best68)
+    globq84 = np.max(best68)
 
     print name, "mode, median, mean, low, high: %.3e, %.3e, %.3e, %.3e, %.3e" \
             % ( best, med, np.mean(param)
@@ -68,7 +76,8 @@ for i in range(len(names)):
 
     plt.bar(center, hist, align='center', width=width)
     yint = ax.get_yaxis().get_data_interval()
-    plt.plot([best, best], [yint[0], yint[1]], color='red', lw=2)
+    plt.plot([best, best], [yint[0], yint[1]], color='black', lw=2)
+    plt.plot([med, med], [yint[0], yint[1]], color='red', lw=2)
     plt.plot([q16, q16], [yint[0], yint[1]], color='red', lw=2,
             linestyle="dashed")
     plt.plot([q84, q84], [yint[0], yint[1]], color='red', lw=2,
@@ -82,22 +91,30 @@ for i in range(len(names)):
     if name.startswith("recobin"):
         recobinx.append(float(name[7:]))
         recobiny.append(best)
-        recobinerr.append((best-q16, q84-best))
+        recobinerr.append((best-globq16, globq84-best))
+        recobinmed.append(med)
+        recobinmederr.append((med-q16, q84-med))
 
     elif name.startswith("truthbin"):
         truthbinx.append(float(name[8:]))
         truthbiny.append(best)
-        truthbinerr.append((best-q16, q84-best))
+        truthbinerr.append((best-globq16, globq84-best))
+        truthbinmed.append(med)
+        truthbinmederr.append((med-q16, q84-med))
 
     elif name.startswith("normtruthbin"):
         normtruthbinx.append(float(name[12:]))
         normtruthbiny.append(best)
-        normtruthbinerr.append((best-q16, q84-best))
+        normtruthbinerr.append((best-globq16, globq84-best))
+        normtruthbinmed.append(med)
+        normtruthbinmederr.append((med-q16, q84-med))
 
     elif "llh" not in name:
         npbiny.append(best)
-        npbinerr.append((best-q16, q84-best))
+        npbinerr.append((best-globq16, globq84-best))
         npbinnames.append(name)
+        npbinmed.append(med)
+        npbinmederr.append((med-q16, q84-med))
 
     if do2D:
         for j in range(i+1, len(names)):
@@ -115,7 +132,9 @@ for i in range(len(names)):
 fig = plt.figure()
 fig.suptitle("reco")
 
-plt.errorbar(recobinx, recobiny, yerr=zip(*recobinerr), xerr=0.5, fmt='o')
+plt.errorbar(recobinx, recobiny, xerr=0.5, fmt='o')
+plt.errorbar(recobinx, recobinmed, yerr=zip(*recobinmederr), fmt='o',
+        color="red")
 plt.savefig("recobin.pdf")
 plt.clf()
 plt.close()
@@ -123,7 +142,9 @@ plt.close()
 fig = plt.figure()
 fig.suptitle("truth")
 
-plt.errorbar(truthbinx, truthbiny, yerr=zip(*truthbinerr), xerr=0.5, fmt='o')
+plt.errorbar(truthbinx, truthbiny, xerr=0.5, fmt='o')
+plt.errorbar(truthbinx, truthbinmed, yerr=zip(*truthbinmederr),
+        fmt='o', color="red")
 plt.savefig("truthbin.pdf")
 plt.clf()
 plt.close()
@@ -131,7 +152,9 @@ plt.close()
 fig = plt.figure()
 fig.suptitle("normtruth")
 
-plt.errorbar(normtruthbinx, normtruthbiny, yerr=zip(*normtruthbinerr), xerr=0.5, fmt='o')
+plt.errorbar(normtruthbinx, normtruthbiny, xerr=0.5, fmt='o')
+plt.errorbar(normtruthbinx, normtruthbinmed,
+        yerr=zip(*normtruthbinmederr), fmt='o', color="red")
 plt.savefig("normtruthbin.pdf")
 plt.clf()
 plt.close()
@@ -139,8 +162,9 @@ plt.close()
 fig = plt.figure()
 fig.suptitle("nuisance params")
 
-(npbinnames, npbiny, npbinerr) = \
-        map(list, zip(*sorted(zip(npbinnames, npbiny, npbinerr))))
+(npbinnames, npbiny, npbinmed, npbinerr, npbinmederr) = \
+        map(list, zip(*sorted(zip(npbinnames, npbiny, npbinmed,
+            npbinerr, npbinmederr))))
 
 binsx = range(0, len(npbinnames))
 
@@ -149,7 +173,9 @@ ax.set_xticks([-1] + binsx + [len(binsx)])
 ax.set_xticklabels([""] + npbinnames + [""], rotation=90,
         rotation_mode="anchor", ha="right", fontsize=8)
 
-plt.errorbar(binsx, npbiny, yerr=zip(*npbinerr), xerr=0.5, fmt='o')
+plt.errorbar(binsx, npbiny, xerr=0.5, fmt='o')
+plt.errorbar(binsx, npbinmed, yerr=zip(*npbinmederr), color="red",
+        fmt='o')
 plt.tight_layout()
 plt.savefig("npbin.pdf")
 plt.clf()
