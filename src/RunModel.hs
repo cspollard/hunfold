@@ -13,6 +13,7 @@ module RunModel
   ( runModel, X.TDigest
   ) where
 
+import           Control.DeepSeq
 import           Control.Foldl                 (FoldM (..))
 import qualified Control.Foldl                 as F
 import           Control.Lens
@@ -204,27 +205,28 @@ runModel nsamps outfile dataH model' modelparams = do
         vectorize :: Int -> F.Fold a b -> F.Fold (Vector a) (Vector b)
         vectorize n fol =
           case fol of
-            (F.Fold h u r) -> F.Fold (V.zipWith h) (V.replicate n u) (fmap r)
+            (F.Fold h u r) -> F.Fold (force . V.zipWith h) (V.replicate n u) (fmap r)
 
         tdigestf :: F.Fold Double (TDigest 3)
         tdigestf = F.Fold (flip insert) mempty id
 
         -- fold for calculating the covariance between two parameters
         covf :: F.Fold (Double, Double) Double
-        covf = F.Fold step (0, 0, 0, 0) done
+        covf = F.Fold step (0, 0, 0, 0 :: Int) done
           where
             step (c, meanx, meany, n) (x, y) =
               let dx = x - meanx
                   dy = y - meany
                   n' = n+1
-                  meanx' = meanx + dx/n'
-                  meany' = meany + dy/n'
+                  nd = fromIntegral n'
+                  meanx' = meanx + dx/nd
+                  meany' = meany + dy/nd
                   c' = c + dx*dy
               in c' `seq` meanx' `seq` meany' `seq` n' `seq`
                   (c', meanx', meany', n')
 
             done (c, _, _, n)
-              | n >= 2 = c / (n-1)
+              | n >= 2 = c / fromIntegral (n-1)
               | otherwise = 1.0/0.0
 
         pairwise :: [a] -> [(a, a)]
