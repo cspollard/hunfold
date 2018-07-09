@@ -6,6 +6,7 @@
 {-# LANGUAGE OverloadedStrings         #-}
 {-# LANGUAGE RankNTypes                #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TupleSections             #-}
 {-# LANGUAGE TypeFamilies              #-}
 
 module RunModel
@@ -43,13 +44,15 @@ import           System.Random.MWC.Probability
 toError :: Either String c -> c
 toError = either error id
 
+type HMT = M.HashMap T.Text
+
 runModel
   :: Int
   -> String
   -> V.Vector Int
   -> Model Double
-  -> M.HashMap T.Text (ModelParam Double)
-  -> IO (M.HashMap T.Text (Maybe Double, TDigest 3))
+  -> HMT (ModelParam Double)
+  -> IO (HMT (Maybe Double, TDigest 3), M.HashMap (T.Text, T.Text) Double)
 runModel nsamps outfile dataH model' modelparams = do
   let (mpnames, mps) = V.unzip . V.fromList $ M.toList modelparams
       start = _mpInitialValue <$> mps
@@ -87,11 +90,11 @@ runModel nsamps outfile dataH model' modelparams = do
   -- putStrLn "likelihood:"
   -- print . logLH $ fmap (var . T.unpack) mpnames
 
-  let x' = take (100 * length start) $ gradientAscent' logLH start
-      x = last $ start : x'
+  let xs' = take (100 * length start) $ gradientAscent' logLH start
+      xs = last $ start : xs'
 
   start' <-
-    if any isNaN x || isNaN (logLH x)
+    if any isNaN xs || isNaN (logLH xs)
       then do
         putStrLn "warning: could not find a likelihood maximum"
         putStrLn "based on your model and initial parameter values."
@@ -102,7 +105,7 @@ runModel nsamps outfile dataH model' modelparams = do
         -- print $ signalVars dataH model
         return start
       else
-        return x
+        return xs
 
   putStrLn "best-fit params:"
   print $ V.zip mpnames start'
@@ -206,20 +209,57 @@ runModel nsamps outfile dataH model' modelparams = do
         tdigestf :: F.Fold Double (TDigest 3)
         tdigestf = F.Fold (flip insert) mempty id
 
+        -- fold for calculating the covariance between two parameters
+        covf :: F.Fold (Double, Double) Double
+        covf = F.Fold step (0, 0, 0, 0) done
+          where
+            step (c, meanx, meany, n) (x, y) =
+              let dx = x - meanx
+                  dy = y - meany
+                  meanx' = meanx + dx/n
+                  meany' = meany + dy/n
+                  c' = c + dx*dy
+                  n' = n+1
+              in c' `seq` meanx' `seq` meany' `seq` n' `seq`
+                  (c', meanx', meany', n')
+
+            done (c, _, _, n)
+              | n >= 2 = c / (n-1)
+              | otherwise = 1.0/0.0
+
+        pairwise :: [a] -> [(a, a)]
+        pairwise (x:ys) = fmap (x,) ys ++ pairwise ys
+        pairwise _      = []
+
+        vcovf n =
+          F.premap (V.fromList . pairwise . V.toList) $ vectorize (n*(n-1)) covf
+
         folder =
           F.impurely P.foldM printAndStore
           $ chain >-> P.take nsamps >-> P.map allParams
 
 
-        printAndStore :: MonadIO m => FoldM m (Vector Double) (Vector (Maybe Double, TDigest 3))
+        printAndStore
+          :: MonadIO m
+          => FoldM m (Vector Double) (Vector (Maybe Double, TDigest 3), Vector Double)
         printAndStore =
           const
-          <$> F.generalize (vectorize (V.length names) ((,) <$> F.head <*> tdigestf))
+          <$> F.generalize
+            ((,)
+              <$> vectorize (V.length names) ((,) <$> F.head <*> tdigestf)
+              <*> vcovf (V.length names)
+            )
           <*> toHandle f
 
     hPutStrLn f . mconcat . intersperse ", " $ T.unpack <$> V.toList names
 
-    M.fromList . V.toList . V.zip names <$> sample folder g
+    (vval, vcov) <- sample folder g
+
+    let hmval = M.fromList . V.toList $ V.zip names vval
+        covnames = V.fromList . pairwise $ V.toList names
+        hmcov = M.fromList . V.toList $ V.zip covnames vcov
+
+    return (hmval, hmcov)
 
 
 -- taken directly from the `ad` package, but now testing for NaNs.
