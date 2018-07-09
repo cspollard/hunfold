@@ -205,7 +205,9 @@ runModel nsamps outfile dataH model' modelparams = do
         vectorize :: Int -> F.Fold a b -> F.Fold (Vector a) (Vector b)
         vectorize n fol =
           case fol of
-            (F.Fold h u r) -> F.Fold (force . V.zipWith h) (V.replicate n u) (fmap r)
+            (F.Fold h u r) -> F.Fold (\vxs -> forceV . V.zipWith h vxs) (V.replicate n u) (fmap r)
+          where
+            forceV v = foldr seq () v `seq` v
 
         tdigestf :: F.Fold Double (TDigest 3)
         tdigestf = F.Fold (flip insert) mempty id
@@ -222,8 +224,7 @@ runModel nsamps outfile dataH model' modelparams = do
                   meanx' = meanx + dx/nd
                   meany' = meany + dy/nd
                   c' = c + dx*dy
-              in c' `seq` meanx' `seq` meany' `seq` n' `seq`
-                  (c', meanx', meany', n')
+              in force (c', meanx', meany', n')
 
             done (c, _, _, n)
               | n >= 2 = c / fromIntegral (n-1)
