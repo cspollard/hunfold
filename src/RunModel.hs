@@ -203,9 +203,8 @@ runModel nsamps outfile dataH model' modelparams = do
             return
 
         vectorize :: Int -> F.Fold a b -> F.Fold (Vector a) (Vector b)
-        vectorize n fol =
-          case fol of
-            (F.Fold h u r) -> F.Fold (\vxs -> forceV . V.zipWith h vxs) (V.replicate n u) (fmap r)
+        vectorize n (F.Fold h u r) =
+          F.Fold (\vxs -> forceV . V.zipWith h vxs) (V.replicate n u) (fmap r)
           where
             forceV v = foldr seq () v `seq` v
 
