@@ -216,10 +216,10 @@ runModel nsamps outfile dataH model' modelparams = do
             step (c, meanx, meany, n) (x, y) =
               let dx = x - meanx
                   dy = y - meany
-                  meanx' = meanx + dx/n
-                  meany' = meany + dy/n
-                  c' = c + dx*dy
                   n' = n+1
+                  meanx' = meanx + dx/n'
+                  meany' = meany + dy/n'
+                  c' = c + dx*dy
               in c' `seq` meanx' `seq` meany' `seq` n' `seq`
                   (c', meanx', meany', n')
 
