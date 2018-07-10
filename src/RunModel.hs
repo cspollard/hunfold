@@ -230,11 +230,11 @@ runModel nsamps outfile dataH model' modelparams = do
               | otherwise = 1.0/0.0
 
         pairwise :: [a] -> [(a, a)]
-        pairwise (x:ys) = fmap (x,) ys ++ pairwise ys
-        pairwise _      = []
+        pairwise xs@(x:ys) = fmap (x,) xs ++ pairwise ys
+        pairwise _         = []
 
         vcovf n =
-          F.premap (V.fromList . pairwise . V.toList) $ vectorize (n*(n-1)) covf
+          F.premap (V.fromList . pairwise . V.toList) $ vectorize ((n+1)*n) covf
 
         folder =
           F.impurely P.foldM printAndStore
@@ -259,7 +259,12 @@ runModel nsamps outfile dataH model' modelparams = do
 
     let hmval = M.fromList . V.toList $ V.zip names vval
         covnames = V.fromList . pairwise $ V.toList names
-        hmcov = M.fromList . V.toList $ V.zip covnames vcov
+        hmcov = symmetrize . M.fromList . V.toList $ V.zip covnames vcov
+
+        symmetrize = M.fromList . go . M.toList
+          where
+            go []                   = []
+            go (((a1, a2), b):rest) = ((a1, a2), b) : ((a2, a1), b) : go rest
 
     return (hmval, hmcov)
 
