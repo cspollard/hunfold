@@ -12,9 +12,11 @@ module Probability
   , logNormalP, logLogNormalP, logPoissonP, logMultinomialP
   , standard, normal, exponential, truncatedExp
   , gamma, chiSquare, bernoulli, dirichlet
-  , T(..)
+  , T(..), covf
   ) where
 
+import           Control.DeepSeq
+import qualified Control.Foldl                 as F
 import           Control.Monad.Primitive       as X (PrimMonad, PrimState)
 import           Data.Monoid                   (Sum (..), (<>))
 import           Data.Number.Erf               as X
@@ -183,3 +185,25 @@ dirichlet as = do
 -- use Sum here to avoid mixups
 normTo :: (Fractional a, Traversable f) => f a -> a -> f a
 normTo xs y = let (Sum s, xs') = mapAccumL (\sofar x -> (Sum x <> sofar, x*y/s)) 0 xs in xs'
+
+-- fold for calculating the covariance between two parameters from
+-- https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Covariance
+covf :: F.Fold (Double, Double) Double
+covf = F.Fold step (0, 0, 0, 0 :: Int) done
+  where
+    step (c, meanx, meany, n) (x, y) =
+      let n' = n + 1
+          nd' = fromIntegral n'
+          dx = x - meanx
+          dy = y - meany
+          meanx' = meanx + dx/nd'
+          meany' = meany + dy/nd'
+          -- note the asymmetry between x and y
+          -- this is important!
+          dy' = y - meany'
+          c' = c + dx*dy'
+      in force (c', meanx', meany', n')
+
+    done (c, _, _, n)
+      | n >= 2 = c / fromIntegral (n-1)
+      | otherwise = 1.0/0.0

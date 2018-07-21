@@ -13,7 +13,6 @@ module RunModel
   ( runModel, X.TDigest
   ) where
 
-import           Control.DeepSeq
 import           Control.Foldl                 (FoldM (..))
 import qualified Control.Foldl                 as F
 import           Control.Lens
@@ -37,6 +36,7 @@ import           Numeric.AD.Internal.Reverse   (Reverse, Tape)
 import           Numeric.AD.Mode.Reverse       as Reverse (gradWith')
 import           Pipes
 import qualified Pipes.Prelude                 as P
+import qualified Probability                   as P
 import           System.IO                     (BufferMode (..), IOMode (..),
                                                 hFlush, hPutStrLn,
                                                 hSetBuffering, stdout, withFile)
@@ -211,30 +211,13 @@ runModel nsamps outfile dataH model' modelparams = do
         tdigestf :: F.Fold Double (TDigest 3)
         tdigestf = F.Fold (flip insert) mempty id
 
-        -- fold for calculating the covariance between two parameters
-        covf :: F.Fold (Double, Double) Double
-        covf = F.Fold step (0, 0, 0, 0 :: Int) done
-          where
-            step (c, meanx, meany, n) (x, y) =
-              let dx = x - meanx
-                  dy = y - meany
-                  n' = n+1
-                  nd = fromIntegral n'
-                  meanx' = meanx + dx/nd
-                  meany' = meany + dy/nd
-                  c' = c + dx*dy
-              in force (c', meanx', meany', n')
-
-            done (c, _, _, n)
-              | n >= 2 = c / fromIntegral (n-1)
-              | otherwise = 1.0/0.0
-
         pairwise :: [a] -> [(a, a)]
         pairwise xs@(x:ys) = fmap (x,) xs ++ pairwise ys
         pairwise _         = []
 
         vcovf n =
-          F.premap (V.fromList . pairwise . V.toList) $ vectorize ((n+1)*n) covf
+          F.premap (V.fromList . pairwise . V.toList)
+          $ vectorize ((n+1)*n) P.covf
 
         folder =
           F.impurely P.foldM printAndStore
