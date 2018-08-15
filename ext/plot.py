@@ -74,13 +74,15 @@ for i in range(len(names)):
     fig, ax = plt.subplots()
     fig.suptitle(name)
 
-    plt.bar(center, hist, align='center', width=width)
+    plt.bar(center, hist, align='center', width=width, color='green')
     yint = ax.get_yaxis().get_data_interval()
-    plt.plot([best, best], [yint[0], yint[1]], color='black', lw=2)
-    plt.plot([med, med], [yint[0], yint[1]], color='red', lw=2)
-    plt.plot([q16, q16], [yint[0], yint[1]], color='red', lw=2,
+    ymin = yint[0]
+    ymax = yint[1]*1.2
+    plt.plot([best, best], [ymin, ymax], color='blue', lw=4)
+    plt.plot([med, med], [ymin, ymax], color='red', lw=2)
+    plt.plot([q16, q16], [ymin, ymax], color='red', lw=2,
             linestyle="dashed")
-    plt.plot([q84, q84], [yint[0], yint[1]], color='red', lw=2,
+    plt.plot([q84, q84], [ymin, ymax], color='red', lw=2,
             linestyle="dashed")
     plt.savefig("%s.pdf" % name)
     plt.clf()
