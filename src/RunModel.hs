@@ -17,6 +17,7 @@ import           Control.Foldl                 (FoldM (..))
 import qualified Control.Foldl                 as F
 import           Control.Lens
 import           Control.Monad                 (when)
+import           Data.Foldable                 (fold)
 import qualified Data.HashMap.Strict           as M
 import           Data.List                     (intersperse)
 import           Data.Monoid                   ((<>))
@@ -41,6 +42,7 @@ import           System.IO                     (BufferMode (..), IOMode (..),
                                                 hFlush, hPutStrLn,
                                                 hSetBuffering, stdout, withFile)
 import           System.Random.MWC.Probability
+import           Text.Printf                   (printf)
 
 toError :: Either String c -> c
 toError = either error id
@@ -128,6 +130,14 @@ runModel nsamps outfile dataH model' modelparams = do
       predstart = toError $ prediction =<< appVars variations start' model
       rref' = toError $ inM rref hess'
 
+      covlist = V.toList $ V.toList <$> cov
+      varlist = V.toList . getDiag . fromLists $ covlist
+      absuncerts = zipWith (\x v -> abs . (/sqrt x) <$> v) varlist covlist
+      reluncerts = zipWith (\x v -> (/x) <$> v) (V.toList start') absuncerts
+
+      mpnameslist = V.toList mpnames
+      matToTable = latextable mpnameslist
+
   putStrLn "prediction given starting params:"
   print predstart
   putStrLn ""
@@ -143,6 +153,14 @@ runModel nsamps outfile dataH model' modelparams = do
   putStrLn ""
   putStrLn "covariance matrix:"
   print . fst $ toMatrix cov
+  putStrLn ""
+  putStr . T.unpack $ matToTable covlist
+  putStrLn ""
+  putStrLn "absolute uncertainties:"
+  putStr . T.unpack $ matToTable absuncerts
+  putStrLn ""
+  putStrLn "relative uncertainties:"
+  putStr . T.unpack $ matToTable reluncerts
   putStrLn ""
   putStrLn "transformation matrix:"
   print . fst $ toMatrix t
@@ -289,3 +307,33 @@ gradientAscent'
   -> f a
   -> [f a]
 gradientAscent' f = gradientDescent' (negate . f)
+
+
+latextable :: [T.Text] -> [[Double]] -> T.Text
+latextable names mat =
+  let fmtLine npname vals =
+        paramToName npname
+        <> " & "
+        <> T.intercalate " & " (T.pack . printf "%.3f" <$> vals)
+        <> " \\\\"
+
+  in T.unlines $
+      [ "\\begin{tabular}{ l " <> fold (replicate (length names) "| c ") <> "}"
+      , " & " <> T.intercalate " & " (paramToName <$> names) <> " \\\\"
+      , "\\hline"
+      ]
+      ++ zipWith fmtLine names mat
+      ++ ["\\end{tabular}"]
+
+
+paramToName :: T.Text -> T.Text
+paramToName s =
+  if "normtruthbin" `T.isPrefixOf` s
+    then
+      T.replace "normtruthbin" "\\sigma_"
+      . T.cons '$'
+      $ T.snoc s '$'
+    else
+      T.replace "__1" ""
+      . T.replace "v2trk" "trk"
+      $ T.replace "_" " " s
