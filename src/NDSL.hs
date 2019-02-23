@@ -2,12 +2,14 @@
 {-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NoMonomorphismRestriction  #-}
+{-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
 
 module NDSL where
 
 import           Control.Monad.Free
 import           Numeric.AD
+import           Text.Show.Deriving
 
 data NDSLFun a where
   Var :: String -> NDSLFun a
@@ -32,11 +34,15 @@ data NDSLFun a where
   ATanh :: a -> NDSLFun a
   deriving (Eq, Ord, Show, Read, Functor)
 
+
+deriveShow1 ''NDSLFun
+
+
 var :: String -> NDSL a
 var = wrap . Var
 
 newtype NDSL a = NDSL { runNDSL :: Free NDSLFun a }
-  deriving (Show, Functor, Applicative, Monad, MonadFree NDSLFun)
+  deriving (Functor, Applicative, Monad, MonadFree NDSLFun, Show)
 
 instance Mode a => Mode (NDSL a) where
   type Scalar (NDSL a) = a

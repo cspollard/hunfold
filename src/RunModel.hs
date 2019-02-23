@@ -60,7 +60,10 @@ runModel nsamps outfile dataH model' modelparams = do
   let (mpnames, mps) = V.unzip . V.fromList $ M.toList modelparams
       start = _mpInitialValue <$> mps
       priors = _mpPrior <$> mps
+
+      variations :: (Mode c, Scalar c ~ Double) => V.Vector (ModelVar c)
       variations = fmap auto . _mpVariation <$> mps
+
       model :: forall c. (Mode c, Scalar c ~ Double) => Model c
       model = auto <$> model'
 
