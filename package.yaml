@@ -1,0 +1,54 @@
+name:                hunfold
+version:             0.1.1.0
+github:              "cspollard/hunfold"
+license:             BSD3
+author:              "cspollard@gmail.com"
+maintainer:          "Chris Pollard"
+copyright:           "2019 Chris Pollard"
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/test#readme>
+
+dependencies:
+- base 
+- primitive 
+- transformers 
+- deriving-compat
+- mwc-random 
+- reflection 
+- mwc-probability 
+- pipes 
+- erf 
+- lens 
+- matrix 
+- linear 
+- vector 
+- aeson 
+- text 
+- free 
+- deepseq 
+- unordered-containers 
+- ad 
+- foldl 
+- tdigest 
+
+library:
+  source-dirs: src
+  ghc-options: -Wall
+
+executables:
+  run-hunfold:
+    main: Main.hs
+    dependencies:
+      - hunfold 
+      - optparse-applicative 
+      - bytestring 
+    source-dirs: app/
+    ghc-options:
+      - -Wall
