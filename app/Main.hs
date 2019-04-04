@@ -4,7 +4,7 @@
 
 module Main where
 
-import           Control.Monad        (void)
+import           Control.Lens
 import           Data.Aeson
 import           Data.Aeson.Types     (Parser, parseEither)
 import qualified Data.ByteString.Lazy as BS
@@ -16,13 +16,15 @@ import           Model
 import           Options.Applicative  hiding (Parser, auto)
 import qualified Options.Applicative  as OA
 import           RunModel
-import           System.IO            (BufferMode (..), hSetBuffering, stdout)
+import           System.IO            (BufferMode (..), IOMode (..), hPutStrLn,
+                                       hSetBuffering, stdout, withFile)
 
 data InArgs =
   InArgs
-    { nsamps  :: Int
-    , outfile :: String
-    , infile  :: String
+    { nsamps     :: Int
+    , outfile    :: String
+    , tablesfile :: String
+    , infile     :: String
     }
 
 inArgs :: OA.Parser InArgs
@@ -34,7 +36,11 @@ inArgs =
     )
   <*> strOption
     ( long "outfile"
-    <> help "text file to record to"
+    <> help "text file to record samples to"
+    )
+  <*> strOption
+    ( long "tablesfile"
+    <> help "text file to write tables to"
     )
   <*> strOption
     ( long "infile"
@@ -43,6 +49,7 @@ inArgs =
 
 opts :: ParserInfo InArgs
 opts = info (helper <*> inArgs) fullDesc
+
 
 main :: IO ()
 main = do
@@ -56,10 +63,26 @@ main = do
 
   -- then try to parsse to our data, Model, and ModelParams
   -- NB: need to give explicit types here so the parser knows what to look for.
-  case parseEither parseModel =<< values of
-    Left err -> error err
-    Right (dataH, model, modelparams)
-      -> void $ runModel nsamps outfile dataH model modelparams
+  (params, covariances) <-
+    case parseEither parseModel =<< values of
+      Left err -> error err
+      Right (dataH, model, modelparams)
+        -> runModel nsamps outfile dataH model modelparams
+
+  let uncerts = posteriorMatrices params covariances
+
+  withFile tablesfile WriteMode $ \h -> do
+      hPutStrLn h "absolute uncertainties:"
+      hPutStrLn h . latextable $ view _1 <$> uncerts
+
+      hPutStrLn h ""
+      hPutStrLn h "relative uncertainties:"
+      hPutStrLn h . latextable $ view _2 <$> uncerts
+
+      hPutStrLn h ""
+      hPutStrLn h "correlations:"
+      hPutStrLn h . latextable $ view _3 <$> uncerts
+
 
 
 parseModel

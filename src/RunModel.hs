@@ -10,7 +10,7 @@
 {-# LANGUAGE TypeFamilies              #-}
 
 module RunModel
-  ( runModel, X.TDigest
+  ( runModel, X.TDigest, latextable, posteriorMatrices
   ) where
 
 import           Control.Foldl                 (FoldM (..))
@@ -19,7 +19,9 @@ import           Control.Lens
 import           Control.Monad                 (when)
 import           Data.Foldable                 (fold)
 import qualified Data.HashMap.Strict           as M
-import           Data.List                     (intersperse)
+import           Data.List                     (intercalate, intersperse, nub,
+                                                sortBy)
+import           Data.Maybe                    (fromMaybe)
 import           Data.Monoid                   ((<>))
 import           Data.Reflection               (Reifies)
 import           Data.TDigest                  as X
@@ -42,7 +44,7 @@ import           System.IO                     (BufferMode (..), IOMode (..),
                                                 hFlush, hPutStrLn,
                                                 hSetBuffering, stdout, withFile)
 import           System.Random.MWC.Probability
-import           Text.Printf                   (printf)
+import           Text.Printf                   (PrintfArg, printf)
 
 toError :: Either String c -> c
 toError = either error id
@@ -139,7 +141,7 @@ runModel nsamps outfile dataH model' modelparams = do
       reluncerts = zipWith (\x v -> (/x) <$> v) (V.toList start') absuncerts
 
       mpnameslist = V.toList mpnames
-      matToTable = latextable mpnameslist
+      matToTable = latextable' mpnameslist
 
   putStrLn "prediction given starting params:"
   print predstart
@@ -233,8 +235,8 @@ runModel nsamps outfile dataH model' modelparams = do
         tdigestf = F.Fold (flip insert) mempty id
 
         pairwise :: [a] -> [(a, a)]
-        pairwise xs@(x:ys) = fmap (x,) xs ++ pairwise ys
-        pairwise _         = []
+        pairwise ys@(y:ys') = fmap (y,) ys ++ pairwise ys'
+        pairwise _          = []
 
         vcovf n =
           F.premap (V.fromList . pairwise . V.toList)
@@ -271,6 +273,88 @@ runModel nsamps outfile dataH model' modelparams = do
             go (((a1, a2), b):rest) = ((a1, a2), b) : ((a2, a1), b) : go rest
 
     return (hmval, hmcov)
+
+
+
+
+posteriorMatrices
+  :: Ord a
+  => M.HashMap T.Text (Maybe a, TDigest comp)
+  -> M.HashMap (T.Text, T.Text) Double
+  -> M.HashMap (T.Text, T.Text) (Double, Double, Double)
+posteriorMatrices params covariances =
+  let params' =
+        fromMaybe (error "error getting mode or quantiles") . sequence
+        $ quant <$> params
+
+      quant (mx, y) = do
+        x <- mx
+        q16 <- quantile 0.16 y
+        q50 <- quantile 0.50 y
+        q84 <- quantile 0.84 y
+        return (x, (q16, q50, q84))
+
+      symmetrize hm =
+        let insert1 h (x, y) = M.insert (y, x) (h M.! (x, y)) h
+        in foldl insert1 hm $ M.keys hm
+
+
+      uncerts =
+        flip M.mapMaybeWithKey (symmetrize covariances) $ \(name, name') cov ->
+          let var =
+                fromMaybe (error "missing variance")
+                $ M.lookup (name, name) covariances
+
+              var' =
+                fromMaybe (error "missing variance")
+                $ M.lookup (name', name') covariances
+
+              mean1 =
+                fromMaybe (error "missing best fit value") $ do
+                  (_, (_, q50, _)) <- M.lookup name params'
+                  return q50
+
+              corr = cov / sqrt var / sqrt var'
+              absuncert = abs $ cov / sqrt var'
+              reluncert = absuncert / mean1
+
+
+          in
+            if T.isPrefixOf "normtruthbin" name
+                && not (T.isPrefixOf "truthbin" name')
+                && not (T.isPrefixOf "recobin" name')
+                && name' /= "llh"
+              then Just (absuncert, reluncert, corr)
+              else Nothing
+
+  in uncerts
+
+
+latextable :: PrintfArg a => M.HashMap (T.Text, T.Text) a -> String
+latextable m =
+  let ks = M.keys m
+      srt s s' = if T.isPrefixOf "normtruthbin" s then LT else s `compare` s'
+
+      poinames = sortBy srt . nub $ fst <$> ks
+      npnames = sortBy srt . nub $ snd <$> ks
+      fmtLine npname =
+        T.unpack (paramToName npname)
+        ++ " & "
+        ++ intercalate " & "
+            ( printf "%.3f" . (M.!) m . (,npname)
+              <$> poinames
+            )
+        ++ " \\\\"
+
+  in unlines $
+    [ "\\begin{tabular}{ l " ++ fold (replicate (length poinames) "| r ") ++ "}"
+    , " & " ++ intercalate " & " (T.unpack . paramToName <$> poinames) ++ " \\\\"
+    , "\\hline"
+    ]
+    ++ (fmtLine <$> npnames)
+    ++ ["\\end{tabular}"]
+
+
 
 
 -- taken directly from the `ad` package, but now testing for NaNs.
@@ -312,8 +396,8 @@ gradientAscent'
 gradientAscent' f = gradientDescent' (negate . f)
 
 
-latextable :: [T.Text] -> [[Double]] -> T.Text
-latextable names mat =
+latextable' :: [T.Text] -> [[Double]] -> T.Text
+latextable' names mat =
   let fmtLine npname vals =
         paramToName npname
         <> " & "
