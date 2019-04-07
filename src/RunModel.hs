@@ -342,8 +342,8 @@ latextable :: PrintfArg a => M.HashMap (T.Text, T.Text) a -> String
 latextable m =
   let ks = M.keys m
 
-      poinames = fmap collapseEither . sort . fmap (eitherA (T.isPrefixOf "normtruthbin")) . nub $ fst <$> ks
-      npnames = fmap collapseEither . sort . fmap (eitherA (T.isPrefixOf "normtruthbin")) . nub $ snd <$> ks
+      poinames = fmap collapseEither . sort . fmap (eitherA (T.isInfixOf "truthbin")) . nub $ fst <$> ks
+      npnames = fmap collapseEither . sort . fmap (eitherA (T.isInfixOf "truthbin")) . nub $ snd <$> ks
       fmtLine npname =
         T.unpack (paramToName npname)
         ++ " & "
