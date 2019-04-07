@@ -57,7 +57,7 @@ metropolisStep proposal logLH (currloc, currllh) = do
 
 
 hamiltonian
-  :: (PrimMonad m, Traversable f, Additive f)
+  :: (PrimMonad m, Traversable f, Additive f, Show (f Double))
   => Int                        -- ^ the number of leapfrog steps per sample
   -> Double                     -- ^ epsilon in the leapfrog steps
   -> (f Double -> Double)       -- ^ the potential energy function
@@ -68,7 +68,7 @@ hamiltonian steps eps u du =
 
 
 hamiltonianStep
-  :: (PrimMonad m, Traversable f, Additive f)
+  :: (PrimMonad m, Traversable f, Additive f, Show (f Double))
   => Int
   -> Double
   -> (f Double -> Double)
@@ -101,17 +101,17 @@ leapfrog
   -> (f a, f a)
   -> (f a, f a)
 leapfrog steps eps du (q0s, p0s) =
-  let p1s = dienan "p1s" <$> lerp (-eps/2) (du q0s) p0s
+  let p1s = dienan "p1s" <$> ((-eps/2) *^ du q0s ^+^ p0s)
 
       its =
         flip iterate (q0s, p1s) $ \(qs, ps) ->
-          let qs' = dienan "qs'" <$> lerp eps ps qs
-              ps' = dienan "ps'" <$> lerp (-eps) (du qs') ps
+          let qs' = dienan "qs'" <$> (eps *^ ps ^+^ qs)
+              ps' = dienan "ps'" <$> ((-eps) *^ du qs' ^+^ ps)
           in (qs', ps')
 
       (q2s, p2s) = its !! (steps-1)
-      qfs = lerp eps p2s q2s
-      pfs = lerp (-eps/2) (du qfs) p2s
+      qfs = eps *^ p2s ^+^ q2s
+      pfs = (-eps/2) *^ du qfs ^+^ p2s
 
   in (qfs, pfs)
 

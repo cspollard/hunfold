@@ -16,7 +16,8 @@ print xs_unsorted
 xs_sorted = np.flipud(xs_unsorted[xs_unsorted[:,0].argsort()])
 
 bests = xs_sorted[0]
-xs = xs_unsorted.transpose()
+xs = xs_sorted.transpose()
+xs_unsorted = xs_unsorted.transpose()
 
 print xs.shape
 
@@ -60,7 +61,7 @@ for i in range(len(names)):
     width = 0.7 * (bins[1] - bins[0])
     center = (bins[:-1] + bins[1:]) / 2
 
-    best = bests[i]
+    best = param[0]
     med = np.median(param)
     (q16, q84) = np.percentile(param, [16, 84])
     globq16 = np.min(best68)
@@ -108,7 +109,7 @@ for i in range(len(names)):
     fig, axis = plt.subplots()
     fig.suptitle(name)
 
-    plt.plot(param)
+    plt.plot(xs_unsorted[i])
     plt.savefig("%s_t.pdf" % name)
 
     plt.clf()
