@@ -20,7 +20,7 @@ import           Control.Monad                 (when)
 import           Data.Foldable                 (fold)
 import qualified Data.HashMap.Strict           as M
 import           Data.List                     (intercalate, intersperse, nub,
-                                                sortBy)
+                                                sort)
 import           Data.Maybe                    (fromMaybe)
 import           Data.Monoid                   ((<>))
 import           Data.Reflection               (Reifies)
@@ -343,13 +343,20 @@ posteriorMatrices params covariances =
   in uncerts
 
 
+
+eitherA :: (a -> Bool) -> a -> Either a a
+eitherA f x = if f x then Left x else Right x
+
+collapseEither :: Either a a -> a
+collapseEither (Left x) = x
+collapseEither (Right x) = x
+
 latextable :: PrintfArg a => M.HashMap (T.Text, T.Text) a -> String
 latextable m =
   let ks = M.keys m
-      srt s s' = if T.isPrefixOf "normtruthbin" s then LT else s `compare` s'
 
-      poinames = sortBy srt . nub $ fst <$> ks
-      npnames = sortBy srt . nub $ snd <$> ks
+      poinames = fmap collapseEither . sort . fmap (eitherA (T.isInfixOf "truthbin")) . nub $ fst <$> ks
+      npnames = fmap collapseEither . sort . fmap (eitherA (T.isInfixOf "truthbin")) . nub $ snd <$> ks
       fmtLine npname =
         T.unpack (paramToName npname)
         ++ " & "
