@@ -52,13 +52,14 @@ toError = either error id
 type HMT = M.HashMap T.Text
 
 runModel
-  :: Int
+  :: Bool
+  ->  Int
   -> String
   -> V.Vector Int
   -> Model Double
   -> HMT (ModelParam Double)
   -> IO (HMT (Maybe Double, TDigest 3), M.HashMap (T.Text, T.Text) Double)
-runModel nsamps outfile dataH model' modelparams = do
+runModel doHam nsamps outfile dataH model' modelparams = do
   let (mpnames, mps) = V.unzip . V.fromList $ M.toList modelparams
       start = _mpInitialValue <$> mps
       priors = _mpPrior <$> mps
@@ -181,12 +182,24 @@ runModel nsamps outfile dataH model' modelparams = do
   -- need an RNG...
   g <- createSystemRandom
 
-  let chain :: PrimMonad m => Producer (V.Vector Double, Double) (Prob m) ()
+  let
+
+      chain :: PrimMonad m => Producer (V.Vector Double, Double) (Prob m) ()
       chain =
-        metropolis
-          (traverse (`normal` sig))
-          (logLH . transform')
-          (invtransform' start', logLH start')
+        if doHam
+          then
+            hamiltonian
+              10
+              0.01
+              (logLH . transform')
+              (gLogLH . transform')
+              (invtransform' start', logLH start')
+
+          else
+            metropolis
+              (traverse (`normal` sig))
+              (logLH . transform')
+              (invtransform' start', logLH start')
 
       -- optimal metropolis size taken from
       -- Gelman et al. (1996)

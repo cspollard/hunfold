@@ -21,10 +21,11 @@ import           System.IO            (BufferMode (..), IOMode (..), hPutStrLn,
 
 data InArgs =
   InArgs
-    { nsamps     :: Int
-    , outfile    :: String
-    , tablesfile :: String
-    , infile     :: String
+    { nsamps      :: Int
+    , outfile     :: String
+    , tablesfile  :: String
+    , infile      :: String
+    , hamiltonian :: Bool
     }
 
 inArgs :: OA.Parser InArgs
@@ -45,6 +46,10 @@ inArgs =
   <*> strOption
     ( long "infile"
     <> help "json file to read model from"
+    )
+  <*> switch
+    ( long "hamiltonian"
+    <> help "use hamiltonian sampling rather than metropolis-hastings"
     )
 
 opts :: ParserInfo InArgs
@@ -67,7 +72,7 @@ main = do
     case parseEither parseModel =<< values of
       Left err -> error err
       Right (dataH, model, modelparams)
-        -> runModel nsamps outfile dataH model modelparams
+        -> runModel hamiltonian nsamps outfile dataH model modelparams
 
   let uncerts = posteriorMatrices params covariances
 

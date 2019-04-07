@@ -16,27 +16,28 @@ copyright:           "2019 Chris Pollard"
 description:         Please see the README on GitHub at <https://github.com/githubuser/test#readme>
 
 dependencies:
-- base 
-- primitive 
-- transformers 
+- base
+- primitive
+- transformers
 - deriving-compat
-- mwc-random 
-- reflection 
-- mwc-probability 
-- pipes 
-- erf 
-- lens 
-- matrix 
-- linear 
-- vector 
-- aeson 
-- text 
-- free 
-- deepseq 
-- unordered-containers 
-- ad 
-- foldl 
-- tdigest 
+- mwc-random
+- reflection
+- mwc-probability
+- linear
+- pipes
+- erf
+- lens
+- matrix
+- linear
+- vector
+- aeson
+- text
+- free
+- deepseq
+- unordered-containers
+- ad
+- foldl
+- tdigest
 
 library:
   source-dirs: src
@@ -46,9 +47,9 @@ executables:
   run-hunfold:
     main: Main.hs
     dependencies:
-      - hunfold 
-      - optparse-applicative 
-      - bytestring 
+      - hunfold
+      - optparse-applicative
+      - bytestring
     source-dirs: app/
     ghc-options:
       - -Wall
