@@ -14,9 +14,9 @@ xs_unsorted = np.loadtxt(stdin, delimiter=',')
 print xs_unsorted
 
 xs_sorted = np.flipud(xs_unsorted[xs_unsorted[:,0].argsort()])
-print xs_sorted
 
-xs = xs_sorted.transpose()
+bests = xs_sorted[0]
+xs = xs_unsorted.transpose()
 
 print xs.shape
 
@@ -60,7 +60,7 @@ for i in range(len(names)):
     width = 0.7 * (bins[1] - bins[0])
     center = (bins[:-1] + bins[1:]) / 2
 
-    best = param[0]
+    best = bests[i]
     med = np.median(param)
     (q16, q84) = np.percentile(param, [16, 84])
     globq16 = np.min(best68)
@@ -70,6 +70,23 @@ for i in range(len(names)):
             % ( best, med, np.mean(param)
               , q16, q84)
     stdout.flush()
+
+    mean = np.mean(param)
+    var = np.var(param)
+    meandiff = param - mean
+    autocov = np.sum(meandiff[:-1]*meandiff[1:]) / (len(meandiff)-1)
+    autocorr = autocov / var
+
+    print("stddev:")
+    print(np.sqrt(var))
+    print("variance:")
+    print(var)
+    print("autocovariance:")
+    print(autocov)
+    print("autocorrelation:")
+    print(autocorr)
+    stdout.flush()
+
 
     fig, ax = plt.subplots()
     fig.suptitle(name)
@@ -88,7 +105,16 @@ for i in range(len(names)):
     plt.clf()
 
 
+    fig, axis = plt.subplots()
+    fig.suptitle(name)
+
+    plt.plot(param)
+    plt.savefig("%s_t.pdf" % name)
+
+    plt.clf()
     plt.close()
+
+
 
     if name.startswith("recobin"):
         recobinx.append(float(name[7:]))

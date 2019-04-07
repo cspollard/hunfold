@@ -25,7 +25,7 @@ data InArgs =
     , outfile     :: String
     , tablesfile  :: String
     , infile      :: String
-    , hamiltonian :: Bool
+    , hamiltonian :: Maybe (Int, Double)
     }
 
 inArgs :: OA.Parser InArgs
@@ -47,9 +47,11 @@ inArgs =
     ( long "infile"
     <> help "json file to read model from"
     )
-  <*> switch
-    ( long "hamiltonian"
-    <> help "use hamiltonian sampling rather than metropolis-hastings"
+  <*> optional
+    ( option OA.auto
+      ( long "hamiltonian"
+      <> help "use hamiltonian sampling rather than metropolis-hastings"
+      )
     )
 
 opts :: ParserInfo InArgs

@@ -41,10 +41,12 @@ import           Pipes
 import qualified Pipes.Prelude                 as P
 import qualified Probability                   as P
 import           System.IO                     (BufferMode (..), IOMode (..),
-                                                hFlush, hPutStrLn,
-                                                hSetBuffering, stdout, withFile)
+                                                hPutStrLn, hSetBuffering,
+                                                stdout, withFile)
 import           System.Random.MWC.Probability
 import           Text.Printf                   (PrintfArg, printf)
+
+
 
 toError :: Either String c -> c
 toError = either error id
@@ -52,14 +54,14 @@ toError = either error id
 type HMT = M.HashMap T.Text
 
 runModel
-  :: Bool
-  ->  Int
+  :: (Maybe (Int, Double))
+  -> Int
   -> String
   -> V.Vector Int
   -> Model Double
   -> HMT (ModelParam Double)
   -> IO (HMT (Maybe Double, TDigest 3), M.HashMap (T.Text, T.Text) Double)
-runModel doHam nsamps outfile dataH model' modelparams = do
+runModel hamParams nsamps outfile dataH model' modelparams = do
   let (mpnames, mps) = V.unzip . V.fromList $ M.toList modelparams
       start = _mpInitialValue <$> mps
       priors = _mpPrior <$> mps
@@ -83,6 +85,7 @@ runModel doHam nsamps outfile dataH model' modelparams = do
 
       gLogLH = grad logLH
 
+  hSetBuffering stdout LineBuffering
   putStrLn "finding best-fit starting parameters"
   putStrLn "starting from here:"
   print $ V.zip mpnames start
@@ -127,12 +130,25 @@ runModel doHam nsamps outfile dataH model' modelparams = do
   -- invert hessian -> covariance matrix
   -- then find the transform from canonical variables
   -- (with mu ~0 and sigma ~1) to the original variables.
-  let hess' = hessian (negate . logLH) start'
+  let potential
+        :: forall c. (Ord c, Floating c, Mode c, Scalar c ~ Double)
+        => V.Vector c -> c
+      potential = negate . logLH
+
+      hess' = hessian potential start'
       cov = toError $ invM hess'
       t = cholM cov
-      it = toError $ invM t
-      transform' v = (t !* v) ^+^ start'
-      invtransform' v' = it !* (v' ^-^ start')
+
+      transform'
+        :: forall c. (Ord c, Floating c, Mode c, Scalar c ~ Double)
+        => V.Vector c -> Vector c
+      transform' v = ((fmap auto <$> t) !* v) ^+^ (auto <$> start')
+
+      potential'
+        :: forall c. (Ord c, Floating c, Mode c, Scalar c ~ Double)
+        => V.Vector c -> c
+      potential' = potential . transform'
+
       predstart = toError $ prediction =<< appVars variations start' model
       rref' = toError $ inM rref hess'
 
@@ -182,33 +198,41 @@ runModel doHam nsamps outfile dataH model' modelparams = do
   -- need an RNG...
   g <- createSystemRandom
 
-  let
+  let zeros = const 0 <$> start'
 
       chain :: PrimMonad m => Producer (V.Vector Double, Double) (Prob m) ()
       chain =
-        if doHam
-          then
+        case hamParams of
+          Just (steps, eps) ->
             hamiltonian
-              10
-              0.01
-              (logLH . transform')
-              (gLogLH . transform')
-              (invtransform' start', logLH start')
+              steps
+              eps
+              potential'
+              (grad potential')
+              (zeros, potential' zeros)
+            >-> P.map (\(v, p) -> (v, negate p))
 
-          else
+          Nothing ->
             metropolis
               (traverse (`normal` sig))
               (logLH . transform')
-              (invtransform' start', logLH start')
+              (zeros, logLH start')
 
       -- optimal metropolis size taken from
       -- Gelman et al. (1996)
       sig = 2.38 / (sqrt . fromIntegral . length $ start')
 
-  putStrLn ""
-  putStrLn "metropolis step size:"
-  print sig
-  hFlush stdout
+  case hamParams of
+    Just (steps, eps) -> do
+      putStrLn ""
+      putStrLn "hamiltonian sampling parameters:"
+      putStrLn $ "leapfrog steps: " ++ show steps
+      putStrLn $ "epsilon: " ++ show eps
+
+    Nothing -> do
+      putStrLn ""
+      putStrLn "metropolis step size:"
+      print sig
 
   -- write the walk locations to file.
   withFile outfile WriteMode $ \f -> do
@@ -348,7 +372,7 @@ eitherA :: (a -> Bool) -> a -> Either a a
 eitherA f x = if f x then Left x else Right x
 
 collapseEither :: Either a a -> a
-collapseEither (Left x) = x
+collapseEither (Left x)  = x
 collapseEither (Right x) = x
 
 latextable :: PrintfArg a => M.HashMap (T.Text, T.Text) a -> String

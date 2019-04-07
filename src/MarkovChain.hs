@@ -60,10 +60,11 @@ hamiltonian
   :: (PrimMonad m, Traversable f, Additive f)
   => Int                        -- ^ the number of leapfrog steps per sample
   -> Double                     -- ^ epsilon in the leapfrog steps
-  -> (f Double -> Double)       -- ^ the likelihood function, possibly with some decoration
-  -> (f Double -> f Double)     -- ^ the derivative of the likelihood function
+  -> (f Double -> Double)       -- ^ the potential energy function
+  -> (f Double -> f Double)     -- ^ the derivative of the potential energy function
   -> MarkovChain (Prob m) (f Double, Double)
-hamiltonian steps eps u du = markovChain $ hamiltonianStep steps eps u du
+hamiltonian steps eps u du =
+  markovChain $ hamiltonianStep steps eps u du
 
 
 hamiltonianStep
