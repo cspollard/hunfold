@@ -59,7 +59,7 @@ runModel
   -> String
   -> V.Vector Int
   -> Model Double
-  -> (forall a. (Mode a, Scalar a ~ Double, Floating a) => Vector a -> a)
+  -> (forall a. (Ord a, Floating a, Mode a, Scalar a ~ Double) => Vector a -> a)
   -> HMT (ModelParam Double)
   -> IO (HMT (Maybe Double, TDigest 3), M.HashMap (T.Text, T.Text) Double)
 runModel hamParams nsamps outfile dataH model' logReg modelparams = do
