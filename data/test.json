@@ -52,7 +52,7 @@
 
         , "truthbin2" : {
             "InitialValue" : 2.5
-            , "Prior" : "Flat"
+            , "Prior" : "PoisJeff"
             , "Variation" : {
                 "Sig" : [0, 0, 1]
             }
