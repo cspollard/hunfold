@@ -15,12 +15,13 @@
             ]
 
         , "Lumi" : 100
+        , "Reg" : "Rising 5"
     }
 
     , "ModelVars" : {
         "lumi" : {
-            "InitialValue" : 0
-            , "Prior" : { "Normal" : {"Mu" : 0, "Sigma" : 0.1} }
+            "InitialValue" : 1
+            , "Prior" : { "Normal" : {"Mu" : 1, "Sigma" : 0.1} }
             , "Variation" : {
                 "Lumi" : 200
             }
