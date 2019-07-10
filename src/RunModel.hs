@@ -59,9 +59,10 @@ runModel
   -> String
   -> V.Vector Int
   -> Model Double
+  -> (forall a. Floating a => V.Vector a -> a)
   -> HMT (ModelParam Double)
   -> IO (HMT (Maybe Double, TDigest 3), M.HashMap (T.Text, T.Text) Double)
-runModel hamParams nsamps outfile dataH model' modelparams = do
+runModel hamParams nsamps outfile dataH model' logReg modelparams = do
   let (mpnames, mps) = V.unzip . V.fromList $ M.toList modelparams
       start = _mpInitialValue <$> mps
       priors = _mpPrior <$> mps
@@ -82,7 +83,7 @@ runModel hamParams nsamps outfile dataH model' modelparams = do
             model
             variations
             (ppToFunc . fmap auto <$> priors)
-            (const 0)
+            logReg
 
       gLogLH = grad logLH
 

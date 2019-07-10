@@ -74,7 +74,7 @@ main = do
     case parseEither parseModel =<< values of
       Left err -> error err
       Right (dataH, model, modelparams)
-        -> runModel hamiltonian nsamps outfile dataH model modelparams
+        -> runModel hamiltonian nsamps outfile dataH model (const 0) modelparams
 
   let uncerts = posteriorMatrices params covariances
 
