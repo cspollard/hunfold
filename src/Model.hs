@@ -86,6 +86,7 @@ instance FromJSON a => FromJSON (ModelVar a) where
 data ParamPrior a =
   Flat
   | NonNegative
+  | PoisJeff
   | Normal a a
   | LogNormal a a
   deriving (Generic, Functor, Show)
@@ -94,6 +95,7 @@ data ParamPrior a =
 instance FromJSON a => FromJSON (ParamPrior a) where
   parseJSON (String "Flat") = return Flat
   parseJSON (String "NonNegative") = return NonNegative
+  parseJSON (String "PoisJeff") = return PoisJeff
 
   parseJSON (Object o) =
       (o .: "Normal" >>= p Normal)
@@ -109,6 +111,8 @@ ppToFunc :: (Ord a, Floating a) => ParamPrior a -> (a -> a)
 ppToFunc Flat            = const 0
 ppToFunc NonNegative = \x ->
   if x < 0 then negate (1/0) else 0
+ppToFunc PoisJeff = \x ->
+  if x < 0 then negate (1/0) else - (log x) / 2  -- log of Poisson Jeffreys prior, \x = 1 / sqrt x
 ppToFunc (Normal m s)    = logNormalP m s
 ppToFunc (LogNormal m s) = logLogNormalP m s
 
