@@ -82,6 +82,7 @@ runModel hamParams nsamps outfile dataH model' modelparams = do
             model
             variations
             (ppToFunc . fmap auto <$> priors)
+            (const 0)
 
       gLogLH = grad logLH
 

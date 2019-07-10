@@ -14,7 +14,7 @@
 
 module Model
   ( Model(..)
-  , mBkgs, mSig, mMig, mLumi, mReg
+  , mBkgs, mSig, mMig, mLumi
   , ModelVar(..)
   , mvBkgs, mvSig, mvMig, mvLumi
   , ModelParam(..)
@@ -36,50 +36,11 @@ import           Data.Aeson.Types
 import           Data.HashMap.Strict
 import           Data.Text           (Text)
 import           Data.Vector         (Vector)
-import qualified Data.Vector as V
 import           GHC.Generics
 import           GHC.TypeLits
-import           Data.Monoid (Sum(..))
-import           Data.Foldable (foldMap)
 
 import           Matrix
 import           Probability
-
-
-data Reg a
-  = NoReg
-  | Falling a
-  | Rising a
-  deriving (Show, Generic, Functor)
-
-instance FromJSON a => FromJSON (Reg a) where
-  parseJSON = genericParseJSON defaultOptions
-
-
-neighbordiff :: Num a => [a] -> [a]
-neighbordiff [] = []
-neighbordiff [_] = []
-neighbordiff (x:xs@(y:_)) = x - y : neighbordiff xs
-
-
-regularize :: (Ord a, Num a) => Reg a -> Vector a -> a
-
-regularize NoReg _ = 0
-
-regularize (Falling mu) sigs =
-  (*mu)
-  . getSum
-  . foldMap (\x -> if x > 0 then mempty else Sum (abs x))
-  . neighbordiff
-  $ V.toList sigs
-
-regularize (Rising mu) sigs =
-  (*mu)
-  . getSum
-  . foldMap (\x -> if x < 0 then mempty else Sum x)
-  . neighbordiff
-  $ V.toList sigs
-
 
 -- TODO
 -- TODO!
@@ -90,7 +51,6 @@ data Model a =
     , _mSig  :: Vector a
     , _mMig  :: Vector (Vector a)
     , _mLumi :: a
-    , _mReg  :: Reg a
     } deriving (Show, Generic, Functor)
 
 makeLenses ''Model
@@ -100,13 +60,12 @@ instance FromJSON a => FromJSON (Model a) where
 
 
 addM :: Num a => Model a -> Model a -> Model a
-addM (Model b s m l r) (Model b' s' m' l' _) =
+addM (Model b s m l) (Model b' s' m' l') =
   Model
     (liftU2 (^+^) b b')
     (s ^+^ s')
     (liftU2 (^+^) m m')
     (l + l')
-    r
 
 
 data ModelVar a =
@@ -130,6 +89,7 @@ data ParamPrior a =
   | Normal a a
   | LogNormal a a
   deriving (Generic, Functor, Show)
+
 
 instance FromJSON a => FromJSON (ParamPrior a) where
   parseJSON (String "Flat") = return Flat
@@ -172,9 +132,10 @@ modelLogPosterior
   -> Model a
   -> Vector (ModelVar a)
   -> Vector (a -> a)
+  -> (Vector a -> a)
   -> Vector a
   -> Either String a
-modelLogPosterior dats model mps logPriors ps =
+modelLogPosterior dats model mps logPriors logReg ps =
   reifyVector ps $ \ps' -> do
     mps' <- toEither "incorrect length of mps" $ fromVector mps
     logPriors' <- toEither "incorrect length of logPriors" $ fromVector logPriors
@@ -182,9 +143,8 @@ modelLogPosterior dats model mps logPriors ps =
     logLike <- toEither "incorrect length of data" $ modelLogLikelihood dats model'
 
     let logPrior = sum $ logPriors' <*> ps'
-        logReg = regularize (_mReg model') (_mSig model')
 
-    return $ logLike + logPrior + logReg
+    return $ logLike + logPrior + logReg (_mSig model')
 
 
 
@@ -269,7 +229,6 @@ varDiff ModelVar{..} x Model{..} = toEither "failed to apply model variation." $
             (toVector $ maybe zero (sigDiff x sig) vSig)
             (toVectorM $ maybe zero (migDiff x mig) vMig)
             (maybe 0 (lumiDiff x _mLumi) _mvLumi)
-            _mReg
 
 
 toEither :: a -> Maybe b -> Either a b
