@@ -11,7 +11,6 @@ do2D = "--2d" in argv
 
 names = map(str.strip, stdin.readline().split(","))
 xs_unsorted = np.loadtxt(stdin, delimiter=',')
-print xs_unsorted
 
 xs_sorted = np.flipud(xs_unsorted[xs_unsorted[:,0].argsort()])
 
@@ -19,7 +18,14 @@ bests = xs_sorted[0]
 xs = xs_sorted.transpose()
 xs_unsorted = xs_unsorted.transpose()
 
-print xs.shape
+print("parameter names:")
+print(names)
+print()
+print("the most-likely parameter values:")
+print(bests)
+print()
+print("the best-fit parameter values:")
+print(xs_unsorted[0])
 
 # if we only have one param we need to add a dimension.
 if len(xs.shape) == 1:
