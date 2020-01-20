@@ -28,8 +28,8 @@ print("the best-fit parameter values:")
 print(xs_unsorted[0])
 print()
 
-print("the difference between most-likely and best-fit:"
-print(bests - xs_unsorted[0])
+print("the difference between most-likely and best-fit:")
+print(bests[0] - xs_unsorted[0])
 print()
 
 # if we only have one param we need to add a dimension.
