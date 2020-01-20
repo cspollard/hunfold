@@ -15,6 +15,8 @@ xs_unsorted = np.loadtxt(stdin, delimiter=',')
 xs_sorted = np.flipud(xs_unsorted[xs_unsorted[:,0].argsort()])
 
 bests = xs_sorted[0]
+bestfits = xs_unsorted[0]
+
 xs = xs_sorted.transpose()
 xs_unsorted = xs_unsorted.transpose()
 
@@ -25,11 +27,11 @@ print("the most-likely parameter values:")
 print(bests)
 print()
 print("the best-fit parameter values:")
-print(xs_unsorted[0])
+print(bestfits)
 print()
 
 print("the difference between most-likely and best-fit:")
-print(bests[0] - xs_unsorted[0])
+print(bests - bestfits)
 print()
 
 # if we only have one param we need to add a dimension.
