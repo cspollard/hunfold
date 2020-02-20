@@ -122,7 +122,7 @@ data ModelParam a =
     { _mpInitialValue :: a
     , _mpPrior        :: ParamPrior a
     , _mpVariation    :: ModelVar a
-    } deriving (Generic, Functor)
+    } deriving (Generic, Functor, Show)
 
 makeLenses ''ModelParam
 
