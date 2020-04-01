@@ -208,7 +208,8 @@ fig.suptitle("nuisance params")
         map(list, zip(*sorted(zip(npbinnames, npbiny, npbinmed,
             npbinerr, npbinmederr))))
 
-binsx = range(0, len(npbinnames))
+nbins = len(npbinnames)
+binsx = range(0, nbins)
 
 ax = plt.subplots()[1]
 ax.set_xticks([-1] + binsx + [len(binsx)])
@@ -218,6 +219,16 @@ ax.set_xticklabels([""] + npbinnames + [""], rotation=90,
 plt.errorbar(binsx, npbiny, xerr=0.5, fmt='o')
 plt.errorbar(binsx, npbinmed, yerr=zip(*npbinmederr), color="red",
         fmt='o')
+
+plt.plot([0, nbins], [-1, -1], color='gray', lw=2,
+        linestyle="dashed", alpha=0.5)
+
+plt.plot([0, nbins], [0, 0], color='gray', lw=2,
+        linestyle="dashed", alpha=0.5)
+
+plt.plot([0, nbins], [1, 1], color='gray', lw=2,
+        linestyle="dashed", alpha=0.5)
+
 plt.tight_layout()
 plt.savefig("npbin.pdf")
 plt.clf()
