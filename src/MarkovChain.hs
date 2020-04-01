@@ -84,7 +84,7 @@ hamiltonianStep steps eps u du start@(q0s, pe0) = do
 
 
   if isNaN pef || isNaN kef
-    then return start
+    then hamiltonianStep steps eps u du start
     else do
       step <- bernoulli . min 1 . exp $ (ke p0s + pe0) - (kef + pef)
 
