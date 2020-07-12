@@ -53,6 +53,7 @@ toError = either error id
 
 type HMT = M.HashMap T.Text
 
+
 runModel
   :: (Maybe (Int, Double))
   -> Int
@@ -178,14 +179,14 @@ runModel hamParams nsamps outfile dataH model' logReg modelparams = do
   putStrLn "covariance matrix:"
   print . fst $ toMatrix cov
   putStrLn ""
-  putStr . T.unpack $ matToTable covlist
-  putStrLn ""
-  putStrLn "absolute uncertainties:"
-  putStr . T.unpack $ matToTable absuncerts
-  putStrLn ""
-  putStrLn "relative uncertainties:"
-  putStr . T.unpack $ matToTable reluncerts
-  putStrLn ""
+  -- putStr . T.unpack $ matToTable covlist
+  -- putStrLn ""
+  -- putStrLn "absolute uncertainties:"
+  -- putStr . T.unpack $ matToTable absuncerts
+  -- putStrLn ""
+  -- putStrLn "relative uncertainties:"
+  -- putStr . T.unpack $ matToTable reluncerts
+  -- putStrLn ""
   putStrLn "transformation matrix:"
   print . fst $ toMatrix t
 
@@ -373,9 +374,11 @@ posteriorMatrices params covariances =
 eitherA :: (a -> Bool) -> a -> Either a a
 eitherA f x = if f x then Left x else Right x
 
+
 collapseEither :: Either a a -> a
 collapseEither (Left x)  = x
 collapseEither (Right x) = x
+
 
 latextable :: PrintfArg a => M.HashMap (T.Text, T.Text) a -> String
 latextable m =

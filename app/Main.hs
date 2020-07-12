@@ -76,19 +76,21 @@ main = do
       Right (dataH, model, modelparams)
         -> runModel hamiltonian nsamps outfile dataH model (const 0) modelparams
 
-  let uncerts = posteriorMatrices params covariances
+  return ()
 
-  withFile tablesfile WriteMode $ \h -> do
-      hPutStrLn h "absolute uncertainties:"
-      hPutStrLn h . latextable $ view _1 <$> uncerts
+  -- let uncerts = posteriorMatrices params covariances
 
-      hPutStrLn h ""
-      hPutStrLn h "relative uncertainties:"
-      hPutStrLn h . latextable $ view _2 <$> uncerts
+  -- withFile tablesfile WriteMode $ \h -> do
+  --     hPutStrLn h "absolute uncertainties:"
+  --     hPutStrLn h . latextable $ view _1 <$> uncerts
 
-      hPutStrLn h ""
-      hPutStrLn h "correlations:"
-      hPutStrLn h . latextable $ view _3 <$> uncerts
+  --     hPutStrLn h ""
+  --     hPutStrLn h "relative uncertainties:"
+  --     hPutStrLn h . latextable $ view _2 <$> uncerts
+
+  --     hPutStrLn h ""
+  --     hPutStrLn h "correlations:"
+  --     hPutStrLn h . latextable $ view _3 <$> uncerts
 
 
 
