@@ -33,7 +33,7 @@ import           Control.Lens
 import           Control.Monad       (foldM, join)
 import           Data.Aeson
 import           Data.Aeson.Types
-import           Data.HashMap.Strict
+import           Data.HashMap.Strict hiding (foldl)
 import           Data.Text           (Text)
 import           Data.Vector         (Vector)
 import           GHC.Generics
